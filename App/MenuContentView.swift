@@ -1,33 +1,68 @@
 import SwiftUI
 import UsageCore
 
-/// The dropdown shown when the menu-bar item is clicked. M1: the current value,
-/// breakdown, refresh, and quit. The fast-switch metric list lands in M2.
+/// The dropdown: the current value + breakdown, a one-tap quick-switch list
+/// (each row shows its live value, the active one is checked), and Settings/Quit.
 struct MenuContentView: View {
     let model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if model.hasData {
-                Text("Tokens · This Month")
-                    .font(.headline)
-                Text(model.exactThisMonth)
-                    .font(.system(.title2, design: .rounded).monospacedDigit())
-                Text(model.breakdownThisMonth)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                Label("Loading…", systemImage: "hourglass")
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            header
+
+            Divider()
+
+            Text("Show in menu bar")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(model.menuOptions, id: \.self) { option in
+                quickSwitchRow(option)
             }
 
             Divider()
 
-            Button("Refresh") { model.refresh() }
-            Button("Quit") { NSApplication.shared.terminate(nil) }
-                .keyboardShortcut("q")
+            HStack {
+                SettingsLink { Text("Settings…") }
+                Spacer()
+                Button("Quit") { NSApplication.shared.terminate(nil) }
+                    .keyboardShortcut("q")
+            }
         }
+        .buttonStyle(.plain)
         .padding(12)
-        .frame(width: 260)
+        .frame(width: 280)
+    }
+
+    @ViewBuilder private var header: some View {
+        if model.hasData {
+            Text(model.headerTitle).font(.headline)
+            Text(model.headerValue)
+                .font(.system(.title2, design: .rounded).monospacedDigit())
+            if !model.breakdown.isEmpty {
+                Text(model.breakdown)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Label("Loading…", systemImage: "hourglass")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func quickSwitchRow(_ option: MetricSelection) -> some View {
+        Button { model.select(option) } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark")
+                    .opacity(model.isSelected(option) ? 1 : 0)
+                    .frame(width: 12)
+                Text(option.label)
+                Spacer()
+                Text(model.value(for: option))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
     }
 }

@@ -12,5 +12,9 @@ struct InlineUsageApp: App {
             Text(model.title)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(model: model)
+        }
     }
 }
