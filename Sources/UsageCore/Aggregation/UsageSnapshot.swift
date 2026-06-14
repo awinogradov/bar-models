@@ -4,10 +4,21 @@ import Foundation
 public struct PeriodTotals: Sendable, Equatable {
     public var tokens: TokenCounts
     public var byModel: [String: TokenCounts]
+    /// Estimated USD cost for this period (computed by the `Aggregator`).
+    public var cost: Double
+    /// Billable tokens from models with no known price (flagged, excluded from `cost`).
+    public var unknownModelTokens: UInt64
 
-    public init(tokens: TokenCounts = .zero, byModel: [String: TokenCounts] = [:]) {
+    public init(
+        tokens: TokenCounts = .zero,
+        byModel: [String: TokenCounts] = [:],
+        cost: Double = 0,
+        unknownModelTokens: UInt64 = 0
+    ) {
         self.tokens = tokens
         self.byModel = byModel
+        self.cost = cost
+        self.unknownModelTokens = unknownModelTokens
     }
 }
 

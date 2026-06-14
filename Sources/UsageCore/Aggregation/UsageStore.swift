@@ -28,7 +28,8 @@ public final class UsageStore {
         let state = self.scanState
         let result = await Task.detached(priority: .utility) { () -> (ScanState, UsageSnapshot) in
             let updated = scanner.update(state) // first pass full; later passes read only appended bytes
-            let snapshot = Aggregator().aggregate(updated.allEvents, using: PeriodBucketer(zone: zone, now: Date()))
+            let pricing = scanner.registry.providers.first?.pricing ?? .claude
+            let snapshot = Aggregator().aggregate(updated.allEvents, using: PeriodBucketer(zone: zone, now: Date()), pricing: pricing)
             return (updated, snapshot)
         }.value
         self.scanState = result.0

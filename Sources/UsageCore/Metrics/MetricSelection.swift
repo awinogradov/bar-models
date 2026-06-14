@@ -36,14 +36,19 @@ public struct MetricSelection: Codable, Equatable, Hashable, Sendable {
         guard let snapshot else { return "…" }
         switch metric {
         case .tokens: return UsageFormat.tokens(snapshot.tokens(period).value(for: tokenDefinition))
-        case .cost, .limit5h, .limitWeekly: return "—" // M3 / M4
+        case .cost: return UsageFormat.cost(snapshot.totals(for: period).cost)
+        case .limit5h, .limitWeekly: return "—" // M4
         }
     }
 
-    /// Exact, grouped value for the dropdown header.
+    /// Exact value for the dropdown header.
     public func renderExact(from snapshot: UsageSnapshot?) -> String {
-        guard let snapshot, metric == .tokens else { return "—" }
-        return UsageFormat.grouped(snapshot.tokens(period).value(for: tokenDefinition))
+        guard let snapshot else { return "—" }
+        switch metric {
+        case .tokens: return UsageFormat.grouped(snapshot.tokens(period).value(for: tokenDefinition))
+        case .cost: return UsageFormat.costExact(snapshot.totals(for: period).cost)
+        case .limit5h, .limitWeekly: return "—" // M4
+        }
     }
 
     /// Quick-switch row label, e.g. "Tokens — This Month".

@@ -6,7 +6,11 @@ import Foundation
 public struct Aggregator: Sendable {
     public init() {}
 
-    public func aggregate(_ events: [UsageEvent], using bucketer: PeriodBucketer) -> UsageSnapshot {
+    public func aggregate(
+        _ events: [UsageEvent],
+        using bucketer: PeriodBucketer,
+        pricing: PricingTable = .claude
+    ) -> UsageSnapshot {
         var totals: [Period: PeriodTotals] = [:]
         for period in Period.allCases { totals[period] = PeriodTotals() }
 
@@ -15,6 +19,13 @@ public struct Aggregator: Sendable {
                 totals[period]!.tokens += event.tokens
                 totals[period]!.byModel[event.model, default: .zero] += event.tokens
             }
+        }
+
+        let calculator = CostCalculator(pricing: pricing)
+        for period in Period.allCases {
+            let breakdown = calculator.cost(of: totals[period]!.byModel)
+            totals[period]!.cost = breakdown.total
+            totals[period]!.unknownModelTokens = breakdown.unknownModelTokens
         }
 
         return UsageSnapshot(generatedAt: bucketer.now, eventCount: events.count, totals: totals)
