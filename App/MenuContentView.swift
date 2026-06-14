@@ -1,14 +1,18 @@
 import SwiftUI
 import UsageCore
 
-/// The dropdown: the current value + breakdown, a one-tap quick-switch list
-/// (each row shows its live value, the active one is checked), and Settings/Quit.
+/// The dropdown: the current value + breakdown, a per-model breakdown, a one-tap
+/// quick-switch list (live values, checkmark on active), and Settings/Quit.
 struct MenuContentView: View {
     let model: AppModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            if !model.modelBreakdown.isEmpty {
+                perModel
+            }
 
             Divider()
 
@@ -31,7 +35,7 @@ struct MenuContentView: View {
         }
         .buttonStyle(.plain)
         .padding(12)
-        .frame(width: 280)
+        .frame(width: 300)
     }
 
     @ViewBuilder private var header: some View {
@@ -47,6 +51,25 @@ struct MenuContentView: View {
         } else {
             Label("Loading…", systemImage: "hourglass")
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var perModel: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("By model")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ForEach(model.modelBreakdown) { line in
+                HStack {
+                    Text(line.name)
+                    Spacer()
+                    Text(line.value).monospacedDigit().foregroundStyle(.secondary)
+                }
+                .font(.callout)
+            }
+            if let note = model.unknownModelNote {
+                Text(note).font(.caption2).foregroundStyle(.tertiary)
+            }
         }
     }
 

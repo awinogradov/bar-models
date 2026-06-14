@@ -29,6 +29,14 @@ struct Main {
                          UsageFormat.grouped(t.inputOutput) as NSString,
                          UsageFormat.grouped(t.billableTotal) as NSString))
         }
+
+        print("\nestimated cost (USD):")
+        for period in Period.allCases {
+            let totals = snapshot.totals(for: period)
+            let unpriced = totals.unknownModelTokens > 0 ? "  (+\(UsageFormat.grouped(totals.unknownModelTokens)) unpriced)" : ""
+            print("  \(period.label): \(UsageFormat.costExact(totals.cost))\(unpriced)")
+        }
+
         let m = snapshot.tokens(.thisMonth)
         print("\nthis month — in \(UsageFormat.grouped(m.input)) · out \(UsageFormat.grouped(m.output)) · cache-write \(UsageFormat.grouped(m.cacheWrite)) · cache-read \(UsageFormat.grouped(m.cacheRead))")
 

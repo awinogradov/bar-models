@@ -2,6 +2,13 @@ import AppKit
 import Observation
 import UsageCore
 
+/// One row of the per-model breakdown shown in the dropdown.
+struct ModelLine: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let value: String
+}
+
 /// Owns the `UsageStore`, the current `MetricSelection`, and settings; derives
 /// the single displayed value and drives real-time refresh. Switching the
 /// metric/period recomputes from the in-memory snapshot — no rescan. Persistence
@@ -14,6 +21,7 @@ final class AppModel {
     var zone: PeriodBucketer.Zone
     var refreshInterval: RefreshInterval
 
+    private let pricing = ProviderRegistry.default.providers.first?.pricing ?? .claude
     private var refresher: RefreshController?
 
     init() {
@@ -38,14 +46,47 @@ final class AppModel {
         return "in \(UsageFormat.tokens(t.input)) · out \(UsageFormat.tokens(t.output)) · cache-rd \(UsageFormat.tokens(t.cacheRead))"
     }
 
+    /// Per-model breakdown of the current selection (tokens or cost), largest first.
+    var modelBreakdown: [ModelLine] {
+        guard let snapshot = store.snapshot else { return [] }
+        let totals = snapshot.totals(for: selection.period)
+        switch selection.metric {
+        case .tokens:
+            return totals.byModel
+                .map { (model: $0.key, raw: $0.value.value(for: selection.tokenDefinition)) }
+                .filter { $0.raw > 0 }
+                .sorted { $0.raw > $1.raw }
+                .map { ModelLine(id: $0.model, name: AppModel.shortModel($0.model), value: UsageFormat.tokens($0.raw)) }
+        case .cost:
+            return CostCalculator(pricing: pricing).cost(of: totals.byModel).byModel
+                .filter { $0.value > 0 }
+                .sorted { $0.value > $1.value }
+                .map { ModelLine(id: $0.key, name: AppModel.shortModel($0.key), value: UsageFormat.cost($0.value)) }
+        case .limit5h, .limitWeekly:
+            return []
+        }
+    }
+
+    /// Shown under a cost view when tokens from unpriced models were excluded.
+    var unknownModelNote: String? {
+        guard selection.metric == .cost, let snapshot = store.snapshot else { return nil }
+        let tokens = snapshot.totals(for: selection.period).unknownModelTokens
+        return tokens > 0 ? "excludes \(UsageFormat.tokens(tokens)) tokens from unpriced models" : nil
+    }
+
     // MARK: Fast switch
 
-    /// The quick-switch rows. M2 offers the token periods; cost (M3) and plan
-    /// limits (M4) join the list in their milestones.
     var menuOptions: [MetricSelection] {
-        [Period.today, .thisWeek, .thisMonth, .rolling30].map {
-            MetricSelection(provider: selection.provider, metric: .tokens, period: $0, tokenDefinition: selection.tokenDefinition)
+        let provider = selection.provider
+        let definition = selection.tokenDefinition
+        func tokens(_ period: Period) -> MetricSelection {
+            MetricSelection(provider: provider, metric: .tokens, period: period, tokenDefinition: definition)
         }
+        func cost(_ period: Period) -> MetricSelection {
+            MetricSelection(provider: provider, metric: .cost, period: period, tokenDefinition: definition)
+        }
+        return [tokens(.today), tokens(.thisWeek), tokens(.thisMonth), tokens(.rolling30),
+                cost(.thisMonth), cost(.today)]
     }
 
     func isSelected(_ option: MetricSelection) -> Bool {
@@ -70,7 +111,7 @@ final class AppModel {
         zone = newZone
         store.zone = newZone
         UserDefaults.standard.set(newZone.rawValue, forKey: Keys.zone)
-        refresh() // re-bucket against the new day boundaries
+        refresh()
     }
 
     func setRefreshInterval(_ interval: RefreshInterval) {
@@ -91,6 +132,15 @@ final class AppModel {
 
     private static func watchRoots() -> [URL] {
         ProviderRegistry.default.providers.flatMap { $0.dataRoots() }
+    }
+
+    // MARK: Helpers
+
+    /// "claude-opus-4-8" → "opus-4-8"; "claude-haiku-4-5-20251001" → "haiku-4-5".
+    static func shortModel(_ model: String) -> String {
+        var name = model.hasPrefix("claude-") ? String(model.dropFirst("claude-".count)) : model
+        if let range = name.range(of: #"-\d{8}$"#, options: .regularExpression) { name.removeSubrange(range) }
+        return name
     }
 
     // MARK: Persistence
