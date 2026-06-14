@@ -20,6 +20,9 @@ Use small hand-built JSONL fixtures (`Fixtures/*.jsonl`) covering the traps:
 - **5-hour windower** — block boundaries (events exactly at +5h), active-block selection, future-timestamp clamp.
 - **Formatting** — K/M/B thresholds, currency, percent.
 - **Provider tagging** — events carry the right `ProviderID`.
+- **Official limits** — `LimitSource` freshness boundary (`<=`), window-reset drop, 0–100 → 0…1 conversion, absent/malformed; `Aggregator` `official ?? estimate` override + stale-snapshot fallback; `UsageStore` publishes official when fresh.
+- **Status-line hook** — the script, driven as a subprocess with a temp `HOME`, writes the snapshot from `rate_limits`, nulls when absent, finds `jq` on a minimal `PATH`, and passes stdin through a wrapped command (exit status preserved).
+- **settings.json transform** — `StatusLineConfig` enable wraps/creates idempotently; disable restores the exact prior (args + quotes) or removes it; sibling keys preserved; unparseable settings throw.
 
 Run: `swift test`. Keep green after every step.
 

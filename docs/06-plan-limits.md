@@ -20,9 +20,9 @@ Claude Code pipes JSON to any configured status-line command, and that JSON incl
 
 So we capture it:
 
-1. Ship `scripts/bar-models-statusline.sh` — reads that JSON on stdin, writes `{five_hour, seven_day, model, ts}` to `~/.claude/bar-models/snapshot.json`, and (if wrapping an existing status-line command) passes the input through so the user's existing status line still renders.
-2. The app offers a **one-click, opt-in** "Enable live limits": with explicit consent it registers the helper as the `statusLine` command in `~/.claude/settings.json`, wrapping any command already there.
-3. The app watches the snapshot file (FSEvents) and shows exact "5h 42% · 7d 31%".
+1. Ship `scripts/bar-models-statusline.sh` — reads that JSON on stdin (via `jq`), writes `{five_hour, seven_day, five_hour_resets_at, seven_day_resets_at, model, ts}` **atomically** (temp + `mv`) to `~/.claude/bar-models/snapshot.json`, and (if wrapping an existing status-line command) passes the input through so the user's existing status line still renders.
+2. The app offers a **one-click, opt-in** "Enable live limits": with explicit consent it registers the helper as the `statusLine` command in `~/.claude/settings.json`, wrapping any command already there (atomic write + one-time `.bak`; disable restores the prior command, but only if our hook is still installed).
+3. The app watches the snapshot file (FSEvents), converts Claude Code's 0–100 percentages to the internal 0…1 scale, and shows the exact "5h 42% · 7d 31%".
 
 This is the only write the app ever makes to Claude's files, and only on explicit opt-in.
 
@@ -39,6 +39,7 @@ When there's no fresh snapshot (hook not enabled, or Claude Code not running):
 
 - Never present the estimate as authoritative; always label it and show its basis (plan and/or P90 budget).
 - Prefer the official snapshot whenever it's fresh.
+- Drop a captured percentage once its window's `resets_at` has passed (it would otherwise over-report after the window rolls) or once the snapshot is older than the staleness threshold — both fall back to the labeled estimate. `jq` is required for the hook; without it the app stays on the estimate.
 - The model-specific weekly cap (e.g. Opus) isn't separately estimated in v1 — note that the weekly figure is the overall cap.
 - Limits change; the official path is robust to that, the estimate is best-effort.
 

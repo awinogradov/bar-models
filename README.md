@@ -7,6 +7,7 @@ Inspired by [One Thing](https://sindresorhus.com/one-thing): show a single value
 - **Claude Code first**, but architected so **Codex CLI / Gemini CLI** and others plug in behind a `UsageProvider` protocol.
 - Reads local usage transcripts (`~/.claude/projects/**/*.jsonl`) — no network, no account, all on-device.
 - Metrics: **tokens** (today / week / month), **estimated cost**, **% of plan limit** (5h / weekly).
+- **Live limits (official %)** — opt in via Settings → Plan limits to show Claude Code's real 5-hour and weekly limit % (captured from its status line); falls back to the labeled estimate when there's no fresh reading. Requires [`jq`](https://jqlang.github.io/jq/) and, with your consent, adds a reversible `statusLine` hook to `~/.claude/settings.json`.
 
 ## Documentation
 
@@ -35,6 +36,7 @@ bar-models/
 │   ├── SettingsView.swift
 │   ├── RefreshController.swift
 │   ├── LaunchAtLogin.swift
+│   ├── LiveLimits.swift       # opt-in install/restore of the status-line hook
 │   └── Main.swift
 ├── Sources/UsageCore/         # provider-neutral engine — SPM library, no UI
 │   ├── Model/                 # TokenCounts · UsageEvent · ProviderID
@@ -44,10 +46,10 @@ bar-models/
 │   ├── Pricing/               # PricingTable · CostCalculator
 │   ├── Metrics/               # MetricSelection
 │   ├── Formatting/            # NumberFormatting
-│   └── Limits/                # FiveHourWindower · LimitEstimator · LimitStatus
+│   └── Limits/                # FiveHourWindower · LimitEstimator · LimitStatus · LimitSource · StatusLineConfig
 ├── Tests/UsageCoreTests/      # Swift Testing unit tests
 ├── docs/                      # numbered chapters (see Documentation)
-├── scripts/                   # package-app.sh · release.sh
+├── scripts/                   # package-app.sh · release.sh · bar-models-statusline.sh
 ├── Package.swift
 └── VERSION
 ```
