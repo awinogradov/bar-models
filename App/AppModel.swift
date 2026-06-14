@@ -23,6 +23,7 @@ final class AppModel {
     var selection: MetricSelection
     var zone: PeriodBucketer.Zone
     var refreshInterval: RefreshInterval
+    var launchAtLogin: Bool
 
     private let pricing = ProviderRegistry.default.providers.first?.pricing ?? .claude
     private var refresher: RefreshController?
@@ -31,6 +32,7 @@ final class AppModel {
         selection = AppModel.loadSelection()
         zone = AppModel.loadZone()
         refreshInterval = AppModel.loadInterval()
+        launchAtLogin = LaunchAtLogin.isEnabled
         store.zone = zone
         NSApplication.shared.setActivationPolicy(.accessory) // menu-bar only, no Dock icon
         Task { await store.refresh() }
@@ -39,10 +41,36 @@ final class AppModel {
 
     // MARK: Display
 
-    var hasData: Bool { store.snapshot != nil }
-    var title: String { selection.render(from: store.snapshot) }
+    /// Loading / first-run / empty / ready — drives the dropdown and the label.
+    var availability: DataAvailability {
+        DataAvailability(snapshot: store.snapshot, hasDataSources: store.hasDataSources)
+    }
+
+    /// Menu-bar label: the value when ready, `…` while the first scan runs, `—`
+    /// when there's nothing to show.
+    var title: String {
+        switch availability {
+        case .ready, .loading: selection.render(from: store.snapshot)
+        case .empty, .noSource: "—"
+        }
+    }
+
     var headerTitle: String { selection.header }
     var headerValue: String { selection.renderExact(from: store.snapshot) }
+
+    /// Heading + hint shown in the dropdown when there's no usage to display.
+    var emptyState: (title: String, message: String)? {
+        switch availability {
+        case .ready, .loading:
+            nil
+        case .noSource:
+            ("No usage data found",
+             "Looked in ~/.claude. Start a Claude Code session and your usage will show up here.")
+        case .empty:
+            ("No usage recorded yet",
+             "Your data folder is empty. Usage will appear after your next Claude Code session.")
+        }
+    }
 
     var breakdown: String {
         guard selection.metric == .tokens, let t = store.snapshot?.tokens(selection.period) else { return "" }
@@ -147,6 +175,13 @@ final class AppModel {
         refreshInterval = interval
         UserDefaults.standard.set(interval.rawValue, forKey: Keys.interval)
         refresher?.start(roots: AppModel.watchRoots(), interval: interval)
+    }
+
+    /// Registers/unregisters the login item, then mirrors the actual resulting
+    /// state (the system may downgrade to "requires approval", or a dev build may
+    /// fail to register) so the toggle reflects reality rather than the request.
+    func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLogin = LaunchAtLogin.setEnabled(enabled)
     }
 
     func refresh() { Task { await store.refresh() } }

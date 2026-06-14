@@ -10,18 +10,20 @@ struct MenuContentView: View {
         VStack(alignment: .leading, spacing: 10) {
             header
 
-            if !model.modelBreakdown.isEmpty {
-                perModel
-            }
+            if model.availability == .ready {
+                if !model.modelBreakdown.isEmpty {
+                    perModel
+                }
 
-            Divider()
+                Divider()
 
-            Text("Show in menu bar")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                Text("Show in menu bar")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
 
-            ForEach(model.menuOptions, id: \.self) { option in
-                quickSwitchRow(option)
+                ForEach(model.menuOptions, id: \.self) { option in
+                    quickSwitchRow(option)
+                }
             }
 
             Divider()
@@ -39,7 +41,22 @@ struct MenuContentView: View {
     }
 
     @ViewBuilder private var header: some View {
-        if model.hasData {
+        switch model.availability {
+        case .loading:
+            Label("Loading…", systemImage: "hourglass")
+                .foregroundStyle(.secondary)
+        case .noSource, .empty:
+            if let empty = model.emptyState {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(empty.title, systemImage: "tray")
+                        .font(.headline)
+                    Text(empty.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        case .ready:
             Text(model.headerTitle).font(.headline)
             Text(model.headerValue)
                 .font(.system(.title2, design: .rounded).monospacedDigit())
@@ -53,9 +70,6 @@ struct MenuContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-        } else {
-            Label("Loading…", systemImage: "hourglass")
-                .foregroundStyle(.secondary)
         }
     }
 
