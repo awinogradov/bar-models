@@ -69,7 +69,8 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
    - **Deliverable:** ✅ tests — render-by-definition, period switch, labels/headers, cost/limit placeholders, JSON round-trip.
 2. **Number formatting** (`Formatting/NumberFormatting.swift`)
    - [x] K/M/B abbreviation + grouped exact (landed in M1, with tests: 999 → "999", 1_500 → "1.5K", 38_214_556 → "38.2M").
-   - [ ] Currency and integer-percent formatting (for the cost and plan-limit metrics — M3/M4).
+   - [x] Currency formatting (`UsageFormat.cost` / `costExact`) — added in M3.
+   - [ ] Integer-percent formatting (for the plan-limit metrics — M4).
 3. **Fast-switch dropdown** (`App/MenuContentView.swift`)
    - [x] Quick-switch rows (token periods: Today / This Week / This Month / Last 30 Days) with live per-row values + a checkmark on the active one; one tap updates the selection. (Cost/limit rows join in M3/M4.)
    - [x] Recomputes from the in-memory snapshot on switch — no rescan.
@@ -87,12 +88,16 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ---
 
-## M3 — Cost
+## M3 — Cost ✅
 
-- [ ] `CostCalculator` (`Pricing/CostCalculator.swift`): per-model token fold → `PricingTable.cost`; sum across models; collect unknown-model token totals.
-- [ ] "Estimated cost" metric (this month / today); dropdown note when unknown-model tokens were excluded.
-- [ ] Multi-root: enable the Xcode CodingAssistant dir behind an `includeXcodeDir` toggle (existence-checked).
-- **Deliverable:** cost reconciles with the `claude-usage` dashboard for the same period; unknown-model flag shows when relevant.
+*GUI confirmed; 40 tests green. Cross-checked against the claude-usage dashboard (below).*
+
+- [x] `CostCalculator` (`Pricing/CostCalculator.swift`): folds the per-model token map → `PricingTable.cost` per model → sum; unpriced models' billable tokens collect into `unknownModelTokens` (flagged, never zeroed into the total). The `Aggregator` bakes per-period `cost` + `unknownModelTokens` into the snapshot.
+- [x] **Cost metric**: `MetricSelection` renders `.cost` (abbreviated `$4.8K`, exact `$4,774.94` via `UsageFormat.cost` / `costExact`); the quick-switch gains **Cost — This Month / Today** rows.
+- [x] **Per-model breakdown** in the dropdown ("By model" — per-model tokens on a tokens view, per-model `$` on a cost view), largest first; plus an "excludes N tokens from unpriced models" note on cost views.
+- [x] **Multi-root**: `ClaudeProvider` scans the Xcode `CodingAssistant` dir **when present** (existence-checked) — included-when-found rather than an `includeXcodeDir` toggle; an opt-out can come later.
+- [x] `--scan-once` prints estimated cost per period (a headless cross-check aid).
+- **Deliverable:** ✅ Last-30-days cost **$4,774.94** vs the dashboard's **$4,419.37** — the ~$355 delta is **fable-5**, which inline-usage prices ($10/$50) and `claude-usage` doesn't; accounting for that, the figures reconcile. Unknown-model flagging works (`<synthetic>` tokens surfaced).
 
 ---
 
