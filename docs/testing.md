@@ -25,7 +25,9 @@ Run: `swift test`. Keep green after every step.
 
 ## Cross-check against `claude-usage`
 
-With the local dashboard running, fetch `http://localhost:8080/api/data` and compare deduped token totals and per-model cost for the same period/models. They should match (modulo the headline token-definition choice — compare like-for-like, i.e. `billableTotal` vs the dashboard's totals).
+Get the app's side with `swift run inline-usage --scan-once` — it prints **all-time per-model totals** (input / output / cacheWrite / cacheRead). Sum the dashboard's `http://localhost:8080/api/data` `daily_by_model` across all days (timezone-independent) and compare per model; the app's `cacheWrite` maps to the dashboard's `cache_creation`. Trigger the dashboard's own rebuild first (`POST /api/rescan`) so both read the same tree.
+
+**Result (2026-06-14):** stable models (`fable-5`, `opus-4-7`, `sonnet-4-6`) matched the dashboard **exactly** across all four token buckets. The actively-used models (`opus-4-8` = current session, `haiku-4-5` = subagents) differed only by the turns written between the two scans — whichever tool scanned later was slightly ahead — confirming identical methodology, with the deltas explained entirely by scan timing, not by a parsing/dedup difference.
 
 ## Manual / app verification
 

@@ -20,6 +20,10 @@ The displayed value is a small config: **provider × metric × period × token-d
 - `withCacheWrite` — adds cache-creation.
 - `billableTotal` — input + output + cache write + cache read. Cost-correlated, but ~97% cache-read, so it's a big number that barely tracks effort. Also what the limit math uses internally.
 
+## Scope: all models, combined
+
+The displayed value sums across **all models** (Opus + Sonnet + Haiku + Fable) for the period — one number, true to "one thing". A Haiku token and an Opus token count equally here, which is fine for a raw token glance but is exactly why **cost** is the more meaningful cross-model number (computed per-model then summed, never from a blended token count) and why the dropdown gains a **per-model breakdown** in M3. Pinning the headline to a single model (a model *scope*) may join the provider scope later. The per-model split already lives in the snapshot (`PeriodTotals.byModel`); only the UI surfacing is pending.
+
 ## Fast switch (core UX)
 
 A one-tap quick-switch list lives directly in the dropdown — no Settings trip. Each row shows its live value; the active one is checkmarked. Tapping a row changes the menu-bar value **instantly**, recomputed from in-memory events (no rescan). The header shows the exact current number plus the per-bucket token breakdown, so the headline is never mistaken for "all tokens".
