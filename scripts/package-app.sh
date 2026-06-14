@@ -42,6 +42,10 @@ rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp "$BIN_PATH/$APP_NAME" "$CONTENTS/MacOS/$APP_NAME"
 
+# Bundle the status-line hook so the in-app "Enable live limits" opt-in can install it.
+cp "$ROOT/scripts/bar-models-statusline.sh" "$CONTENTS/Resources/bar-models-statusline.sh"
+chmod 0755 "$CONTENTS/Resources/bar-models-statusline.sh"
+
 cat > "$CONTENTS/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
