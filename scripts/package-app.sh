@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Assemble a release `inline-usage.app` bundle from the SwiftPM executable.
+# Assemble a release `bar-models.app` bundle from the SwiftPM executable.
 # The app is menu-bar-only (LSUIElement) and un-sandboxed (reads ~/.claude
 # directly). See docs/distribution.md for the full release pipeline.
 #
@@ -13,8 +13,8 @@
 # BUILD_NUMBER env var overrides CFBundleVersion (default 1).
 set -euo pipefail
 
-APP_NAME="inline-usage"
-BUNDLE_ID="com.inline-usage.app"
+APP_NAME="bar-models"
+BUNDLE_ID="com.bar-models.app"
 MIN_MACOS="14.0"
 
 SIGN_IDENTITY="-" # ad-hoc by default
@@ -58,7 +58,7 @@ cat > "$CONTENTS/Info.plist" <<EOF
     <key>CFBundleName</key>
     <string>${APP_NAME}</string>
     <key>CFBundleDisplayName</key>
-    <string>Inline Usage</string>
+    <string>Bar Models</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -72,7 +72,7 @@ cat > "$CONTENTS/Info.plist" <<EOF
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHumanReadableCopyright</key>
-    <string>inline-usage</string>
+    <string>bar-models</string>
 </dict>
 </plist>
 EOF

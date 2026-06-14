@@ -7,15 +7,15 @@
 #   • a "Developer ID Application" certificate in the login keychain
 #       security find-identity -v -p codesigning
 #   • a stored notarytool keychain profile
-#       xcrun notarytool store-credentials inline-usage-notary \
+#       xcrun notarytool store-credentials bar-models-notary \
 #         --apple-id you@example.com --team-id TEAMID --password <app-specific-pw>
 #
 # Usage:
 #   scripts/release.sh --sign "Developer ID Application: NAME (TEAMID)" \
-#                      --notary-profile inline-usage-notary
+#                      --notary-profile bar-models-notary
 set -euo pipefail
 
-APP_NAME="inline-usage"
+APP_NAME="bar-models"
 SIGN_IDENTITY=""
 NOTARY_PROFILE=""
 while [ $# -gt 0 ]; do

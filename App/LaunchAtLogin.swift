@@ -7,7 +7,7 @@ import ServiceManagement
 /// so every call is best-effort and the resulting `status` is the source of truth.
 @MainActor
 enum LaunchAtLogin {
-    private static let log = Logger(subsystem: "inline-usage", category: "LaunchAtLogin")
+    private static let log = Logger(subsystem: "bar-models", category: "LaunchAtLogin")
 
     /// `true` only when the system reports the login item as enabled.
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }

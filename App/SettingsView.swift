@@ -11,7 +11,7 @@ struct SettingsView: View {
         Form {
             Section("General") {
                 Toggle("Launch at login", isOn: launchAtLogin)
-                    .help("Start inline-usage automatically when you log in. Requires the installed app bundle; in System Settings › General › Login Items you can revoke it.")
+                    .help("Start bar-models automatically when you log in. Requires the installed app bundle; in System Settings › General › Login Items you can revoke it.")
             }
 
             Section("Display") {

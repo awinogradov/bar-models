@@ -11,7 +11,7 @@ struct Main {
             runScanOnce()
             return
         }
-        InlineUsageApp.main()
+        BarModelsApp.main()
     }
 
     private static func runScanOnce() {
@@ -20,7 +20,7 @@ struct Main {
         let snapshot = Aggregator().aggregate(events, using: PeriodBucketer(now: Date()))
         let elapsed = Date().timeIntervalSince(started)
 
-        print("inline-usage --scan-once")
+        print("bar-models --scan-once")
         print("scanned \(snapshot.eventCount) deduped events in \(String(format: "%.2fs", elapsed))\n")
         for period in Period.allCases {
             let t = snapshot.tokens(period)
@@ -47,7 +47,7 @@ struct Main {
         let m = snapshot.tokens(.thisMonth)
         print("\nthis month — in \(UsageFormat.grouped(m.input)) · out \(UsageFormat.grouped(m.output)) · cache-write \(UsageFormat.grouped(m.cacheWrite)) · cache-read \(UsageFormat.grouped(m.cacheRead))")
 
-        // All-time per-model raw totals, for cross-checking the claude-usage /api/data dashboard.
+        // All-time per-model raw totals, for cross-checking against an external usage dashboard.
         var byModel: [String: TokenCounts] = [:]
         var grand = TokenCounts.zero
         for event in events {
