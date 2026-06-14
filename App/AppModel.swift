@@ -24,6 +24,9 @@ final class AppModel {
     var zone: PeriodBucketer.Zone
     var refreshInterval: RefreshInterval
     var launchAtLogin: Bool
+    var liveLimitsEnabled: Bool
+    /// Non-nil when live limits need attention (e.g. `jq` missing, or the status line was changed outside the app).
+    var liveLimitsWarning: String?
 
     private let pricing = ProviderRegistry.default.providers.first?.pricing ?? .claude
     private var refresher: RefreshController?
@@ -33,6 +36,9 @@ final class AppModel {
         zone = AppModel.loadZone()
         refreshInterval = AppModel.loadInterval()
         launchAtLogin = LaunchAtLogin.isEnabled
+        liveLimitsEnabled = UserDefaults.standard.bool(forKey: Keys.liveLimits)
+        liveLimitsWarning = (liveLimitsEnabled && !LiveLimits.jqAvailable)
+            ? "jq not found — install jq for live limits." : nil
         store.zone = zone
         NSApplication.shared.setActivationPolicy(.accessory) // menu-bar only, no Dock icon
         Task { await store.refresh() }
@@ -184,6 +190,31 @@ final class AppModel {
         launchAtLogin = LaunchAtLogin.setEnabled(enabled)
     }
 
+    /// Opt in/out of official limits. Installs (or removes) the status-line hook and
+    /// rewraps `~/.claude/settings.json`; on any failure the toggle reverts to reality
+    /// (mirroring `setLaunchAtLogin`). Re-arms the watch so the snapshot dir is tracked.
+    func setLiveLimitsEnabled(_ enabled: Bool) {
+        let previous = liveLimitsEnabled
+        do {
+            if enabled {
+                try LiveLimits.enable()
+                liveLimitsWarning = LiveLimits.jqAvailable ? nil : "jq not found — install jq for live limits."
+            } else {
+                switch try LiveLimits.disable() {
+                case .restored: liveLimitsWarning = nil
+                case .leftAlone: liveLimitsWarning = "Your status line was changed outside bar-models, so it was left as-is."
+                }
+            }
+            liveLimitsEnabled = enabled
+            UserDefaults.standard.set(enabled, forKey: Keys.liveLimits)
+            refresher?.start(roots: AppModel.watchRoots(), interval: refreshInterval) // (un)watch the snapshot dir
+            refresh()
+        } catch {
+            liveLimitsEnabled = previous // reflect reality — the toggle snaps back
+            liveLimitsWarning = "Couldn't \(enabled ? "enable" : "disable") live limits: \(error.localizedDescription)"
+        }
+    }
+
     func refresh() { Task { await store.refresh() } }
 
     // MARK: Watching
@@ -195,7 +226,11 @@ final class AppModel {
     }
 
     private static func watchRoots() -> [URL] {
-        ProviderRegistry.default.providers.flatMap { $0.dataRoots() }
+        var roots = ProviderRegistry.default.providers.flatMap { $0.dataRoots() }
+        if FileManager.default.fileExists(atPath: LiveLimits.directory.path) {
+            roots.append(LiveLimits.directory) // pick up official-snapshot writes
+        }
+        return roots
     }
 
     // MARK: Helpers
@@ -213,6 +248,7 @@ final class AppModel {
         static let selection = "selection"
         static let zone = "bucketTimeZone"
         static let interval = "refreshInterval"
+        static let liveLimits = "liveLimits"
     }
 
     private func saveSelection() {

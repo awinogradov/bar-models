@@ -17,7 +17,8 @@ struct Main {
     private static func runScanOnce() {
         let started = Date()
         let events = UsageScanner().scan()
-        let snapshot = Aggregator().aggregate(events, using: PeriodBucketer(now: Date()))
+        let official = LimitSource().read(now: Date())
+        let snapshot = Aggregator().aggregate(events, using: PeriodBucketer(now: Date()), official: official)
         let elapsed = Date().timeIntervalSince(started)
 
         print("bar-models --scan-once")
@@ -40,7 +41,7 @@ struct Main {
         func limitLine(_ status: LimitStatus) -> String {
             status.available ? "\(UsageFormat.percent(status.percent))  (\(status.basis))" : "— (\(status.basis))"
         }
-        print("\nplan limits (estimate):")
+        print("\nplan limits:")
         print("  5-hour: \(limitLine(snapshot.limit5h))")
         print("  weekly: \(limitLine(snapshot.limitWeekly))")
 
