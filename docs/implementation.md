@@ -129,12 +129,16 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ---
 
-## M5 — Polish & notarize
+## M5 — Polish & notarize — code ✅ · notarization pending (Developer ID cert)
 
-- [ ] `SMAppService.mainApp` launch-at-login toggle.
-- [ ] Empty/first-run state (no `~/.claude` → friendly "No data"); timezone setting; refresh-interval polish.
-- [ ] **Prereq:** install a Developer ID Application cert. Then: sign (`--options runtime`, no sandbox) → build `.dmg` → `notarytool submit --wait` → `stapler staple` → verify `spctl`. See `distribution.md`.
-- **Deliverable:** a notarized `.dmg` that launches clean on a second Mac.
+*Polish (launch-at-login, empty/first-run state, settings sections) built; 50 tests green. The `.app` bundle + release pipeline are scripted and verified through ad-hoc signing; the notarized `.dmg` needs a Developer ID cert (none installed — see `distribution.md`).*
+
+- [x] **Launch-at-login** (`App/LaunchAtLogin.swift`): `SMAppService.mainApp` register/unregister behind a Settings toggle. Best-effort — registration only sticks for a signed, bundled `.app`, so the toggle mirrors the real `status` (a dev `swift run` can't register; logged via `OSLog`, never fatal).
+- [x] **Empty/first-run state** (`Aggregation/DataAvailability.swift`): a pure `loading / noSource / empty / ready` classification (tested), fed by a new `UsageStore.hasDataSources` signal computed off-main. The dropdown shows a friendly "No usage data found" (no `~/.claude`) or "No usage recorded yet" (empty folder); the menu-bar label shows `—` instead of `0`; quick-switch rows stay hidden until data exists.
+- [x] **Settings polish** (`App/SettingsView.swift`): grouped into General (launch-at-login) / Display (token metric, day boundaries = local/UTC timezone) / Updates (refresh cadence), each with help text.
+- [x] **`.app` bundle + release pipeline** (`scripts/package-app.sh`, `scripts/release.sh`, `VERSION`): builds a universal (arm64+x86_64) `LSUIElement` bundle; ad-hoc signs for local use, Developer ID signs (`--options runtime` + `--timestamp`) for release; then DMG (with `/Applications` symlink) → `notarytool submit --wait` → `stapler staple` → `spctl` verify. Verified locally: universal binary, `LSUIElement=true`, `codesign --verify --strict` passes on the ad-hoc bundle.
+- [ ] **Notarization** (`scripts/release.sh`): needs a Developer ID Application cert + a stored notarytool profile (the user's Apple Developer account). One command once the cert is installed: `scripts/release.sh --sign "Developer ID Application: NAME (TEAMID)" --notary-profile inline-usage-notary`.
+- **Deliverable:** code polish ✅ and the pipeline ✅ through signing; the notarized `.dmg` that launches clean on a second Mac is one `scripts/release.sh` run away, blocked only on the cert.
 
 ---
 
