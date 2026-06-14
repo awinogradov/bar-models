@@ -16,8 +16,8 @@ public struct ClaudeProvider: UsageProvider {
         let home = fm.homeDirectoryForCurrentUser
         let candidates = [
             home.appending(path: ".claude/projects"),
-            // Optional Xcode CodingAssistant transcripts (toggled on in M3):
-            // home.appending(path: "Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/projects"),
+            // Xcode's Claude CodingAssistant transcripts — included when present (existence-checked below).
+            home.appending(path: "Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/projects"),
         ]
         return candidates.filter { fm.fileExists(atPath: $0.path) }
     }
