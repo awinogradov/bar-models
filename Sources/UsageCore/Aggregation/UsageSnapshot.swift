@@ -28,11 +28,21 @@ public struct UsageSnapshot: Sendable, Equatable {
     public let generatedAt: Date
     public let eventCount: Int
     public let totals: [Period: PeriodTotals]
+    public let limit5h: LimitStatus
+    public let limitWeekly: LimitStatus
 
-    public init(generatedAt: Date, eventCount: Int, totals: [Period: PeriodTotals]) {
+    public init(
+        generatedAt: Date,
+        eventCount: Int,
+        totals: [Period: PeriodTotals],
+        limit5h: LimitStatus = LimitStatus(),
+        limitWeekly: LimitStatus = LimitStatus()
+    ) {
         self.generatedAt = generatedAt
         self.eventCount = eventCount
         self.totals = totals
+        self.limit5h = limit5h
+        self.limitWeekly = limitWeekly
     }
 
     public func totals(for period: Period) -> PeriodTotals { totals[period] ?? PeriodTotals() }

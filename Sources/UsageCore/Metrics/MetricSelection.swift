@@ -37,7 +37,8 @@ public struct MetricSelection: Codable, Equatable, Hashable, Sendable {
         switch metric {
         case .tokens: return UsageFormat.tokens(snapshot.tokens(period).value(for: tokenDefinition))
         case .cost: return UsageFormat.cost(snapshot.totals(for: period).cost)
-        case .limit5h, .limitWeekly: return "—" // M4
+        case .limit5h: return Self.renderLimit(snapshot.limit5h)
+        case .limitWeekly: return Self.renderLimit(snapshot.limitWeekly)
         }
     }
 
@@ -47,8 +48,15 @@ public struct MetricSelection: Codable, Equatable, Hashable, Sendable {
         switch metric {
         case .tokens: return UsageFormat.grouped(snapshot.tokens(period).value(for: tokenDefinition))
         case .cost: return UsageFormat.costExact(snapshot.totals(for: period).cost)
-        case .limit5h, .limitWeekly: return "—" // M4
+        case .limit5h: return Self.renderLimit(snapshot.limit5h)
+        case .limitWeekly: return Self.renderLimit(snapshot.limitWeekly)
         }
+    }
+
+    /// `—` when unavailable; `~42%` for an estimate; `42%` when official.
+    private static func renderLimit(_ status: LimitStatus) -> String {
+        guard status.available else { return "—" }
+        return (status.isOfficial ? "" : "~") + UsageFormat.percent(status.percent)
     }
 
     /// Quick-switch row label, e.g. "Tokens — This Month".

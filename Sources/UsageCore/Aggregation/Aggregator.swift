@@ -9,7 +9,8 @@ public struct Aggregator: Sendable {
     public func aggregate(
         _ events: [UsageEvent],
         using bucketer: PeriodBucketer,
-        pricing: PricingTable = .claude
+        pricing: PricingTable = .claude,
+        limitBudgets: LimitBudgets = LimitBudgets()
     ) -> UsageSnapshot {
         var totals: [Period: PeriodTotals] = [:]
         for period in Period.allCases { totals[period] = PeriodTotals() }
@@ -28,6 +29,16 @@ public struct Aggregator: Sendable {
             totals[period]!.unknownModelTokens = breakdown.unknownModelTokens
         }
 
-        return UsageSnapshot(generatedAt: bucketer.now, eventCount: events.count, totals: totals)
+        let estimator = LimitEstimator()
+        let limit5h = estimator.fiveHour(events, now: bucketer.now, customBudget: limitBudgets.fiveHour)
+        let limitWeekly = estimator.weekly(events, now: bucketer.now, customBudget: limitBudgets.weekly)
+
+        return UsageSnapshot(
+            generatedAt: bucketer.now,
+            eventCount: events.count,
+            totals: totals,
+            limit5h: limit5h,
+            limitWeekly: limitWeekly
+        )
     }
 }

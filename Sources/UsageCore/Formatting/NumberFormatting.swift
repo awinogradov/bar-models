@@ -32,6 +32,12 @@ public enum UsageFormat {
         "$" + usd.formatted(.number.precision(.fractionLength(2)).grouping(.automatic))
     }
 
+    /// Integer percent for plan limits: `42%`. Clamps negatives to 0; values over
+    /// 100% pass through (over-budget is meaningful).
+    public static func percent(_ fraction: Double) -> String {
+        "\(Int((max(0, fraction) * 100).rounded()))%"
+    }
+
     private static func trimmed(_ x: Double) -> String {
         let s = String(format: "%.1f", x)
         return s.hasSuffix(".0") ? String(s.dropLast(2)) : s
