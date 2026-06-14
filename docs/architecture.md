@@ -47,7 +47,7 @@
 
 ```
 ┌──────────────────────── App target (SwiftUI, Xcode) ────────────────────────┐
-│ InlineUsageApp · MenuBarLabelView · MenuContentView · SettingsView           │
+│ BarModelsApp · MenuBarLabelView · MenuContentView · SettingsView             │
 │ AppModel · RefreshController (FSEvents + debounce + liveness tick)           │
 └───────────────────────────────────┬─────────────────────────────────────────┘
                                      │ depends on

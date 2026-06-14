@@ -1,12 +1,12 @@
-# PRD — inline-usage
+# PRD — bar-models
 
 ## Problem
 
-Developers on Claude Code (and soon other AI-coding CLIs) have no always-on sense of *how much they're using*. The existing `claude-usage` tool is a full dashboard — accurate, but something you have to stop and open. The information people actually want moment-to-moment is a single number: "how many tokens this month?", "how close am I to my limit right now?". A dashboard is the wrong shape for a glance.
+Developers on Claude Code (and soon other AI-coding CLIs) have no always-on sense of *how much they're using*. A full usage dashboard is accurate, but it's something you have to stop and open. The information people actually want moment-to-moment is a single number: "how many tokens this month?", "how close am I to my limit right now?". A dashboard is the wrong shape for a glance.
 
 ## Solution
 
-A tiny native macOS menu-bar app that shows **exactly one** usage value, always visible, switchable in one tap, updating in real time. It borrows the *One Thing* philosophy (a single line of text, no chrome) and the data model of `claude-usage` (local transcript parsing), and meets in the middle.
+A tiny native macOS menu-bar app that shows **exactly one** usage value, always visible, switchable in one tap, updating in real time. It borrows the *One Thing* philosophy (a single line of text, no chrome) and the local-transcript data model of a full usage dashboard, and meets in the middle.
 
 ## Target user
 
@@ -23,7 +23,7 @@ A developer who uses Claude Code daily on macOS, on a Pro/Max subscription (or A
 
 ## Non-goals (v1)
 
-- Not a dashboard. No charts, tables, history views — that's what `claude-usage` is for.
+- Not a dashboard. No charts, tables, history views — a full usage dashboard is the right shape for those.
 - No multiple values at once in the menu bar (the whole point is *one* thing).
 - No org/admin analytics, no cloud sync, no accounts.
 - No write access to Claude data (read-only; the only optional write is an opt-in status-line hook the user explicitly enables).
@@ -33,7 +33,7 @@ A developer who uses Claude Code daily on macOS, on a Pro/Max subscription (or A
 - A correct, deduplicated "tokens this month" appears in the menu bar within a couple seconds of launch, on a real ~500 MB transcript tree, without stalling the UI.
 - Switching metrics is instant (no rescan).
 - When the opt-in status-line hook is enabled, the shown 5h/weekly % matches Claude Code's own `/usage` and status line; without it, a clearly-labeled estimate is shown.
-- Token/cost totals reconcile with the `claude-usage` dashboard for the same period.
+- Token/cost totals reconcile with an external reference dashboard for the same period.
 
 ## Scope by milestone
 
@@ -51,4 +51,4 @@ See [`implementation.md`](implementation.md) for the step-by-step build. High le
 
 - **One thing.** If a feature adds a second number to the menu bar, it's wrong.
 - **Honest numbers.** Cache-reads dominate raw totals, so the headline is input+output by default; estimates are always labeled "estimate"; unknown models are flagged, not silently zeroed.
-- **Provider-neutral core.** Claude-specific code lives behind one protocol so the app's name (`inline-usage`, not `claude-usage`) stays true.
+- **Provider-neutral core.** Claude-specific code lives behind one protocol, so other providers (Codex, Gemini) plug in without touching the engine.

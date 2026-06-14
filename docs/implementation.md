@@ -49,7 +49,7 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 5. **`UsageStore`** (`Aggregation/UsageStore.swift`)
    - [x] `@MainActor @Observable`; `refresh()` runs the scan in a detached task and publishes the `Sendable` snapshot on the main actor; single-flight via an `isScanning` guard.
    - **Deliverable:** ✅ exposes `snapshot.tokens(.thisMonth)`; starts empty/idle (tested).
-6. **App** (`App/`, an **SPM executable target** — `swift run inline-usage`)
+6. **App** (`App/`, an **SPM executable target** — `swift run bar-models`)
    - [x] `MenuBarExtra { MenuContentView } label: { Text(model.title) }`, `.menuBarExtraStyle(.window)`; Dock icon hidden via `.accessory` activation policy.
    - [x] Label shows the abbreviated value (K/M/B); dropdown shows the exact grouped value + `in · out · cache-rd` breakdown + Refresh/Quit; "Loading…" until the first scan completes.
    - [x] `--scan-once` headless mode (`Main.swift`) prints per-period totals and exits — the real-data smoke test.
@@ -90,14 +90,14 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ## M3 — Cost ✅
 
-*GUI confirmed; 40 tests green. Cross-checked against the claude-usage dashboard (below).*
+*GUI confirmed; 40 tests green. Cross-checked against an external reference dashboard (below).*
 
 - [x] `CostCalculator` (`Pricing/CostCalculator.swift`): folds the per-model token map → `PricingTable.cost` per model → sum; unpriced models' billable tokens collect into `unknownModelTokens` (flagged, never zeroed into the total). The `Aggregator` bakes per-period `cost` + `unknownModelTokens` into the snapshot.
 - [x] **Cost metric**: `MetricSelection` renders `.cost` (abbreviated `$4.8K`, exact `$4,774.94` via `UsageFormat.cost` / `costExact`); the quick-switch gains **Cost — This Month / Today** rows.
 - [x] **Per-model breakdown** in the dropdown ("By model" — per-model tokens on a tokens view, per-model `$` on a cost view), largest first; plus an "excludes N tokens from unpriced models" note on cost views.
 - [x] **Multi-root**: `ClaudeProvider` scans the Xcode `CodingAssistant` dir **when present** (existence-checked) — included-when-found rather than an `includeXcodeDir` toggle; an opt-out can come later.
 - [x] `--scan-once` prints estimated cost per period (a headless cross-check aid).
-- **Deliverable:** ✅ Last-30-days cost **$4,774.94** vs the dashboard's **$4,419.37** — the ~$355 delta is **fable-5**, which inline-usage prices ($10/$50) and `claude-usage` doesn't; accounting for that, the figures reconcile. Unknown-model flagging works (`<synthetic>` tokens surfaced).
+- **Deliverable:** ✅ Last-30-days cost **$4,774.94** vs the reference dashboard's **$4,419.37** — the ~$355 delta is **fable-5**, which bar-models prices ($10/$50) and the reference doesn't; accounting for that, the figures reconcile. Unknown-model flagging works (`<synthetic>` tokens surfaced).
 
 ---
 
@@ -117,7 +117,7 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ### M4b — Official path (pending)
 
-- [ ] `scripts/inline-usage-statusline.sh` reads Claude Code's status-line JSON on stdin and writes `{five_hour, seven_day, model, ts}` to `~/.claude/inline-usage/snapshot.json` (passing input through if wrapping an existing command).
+- [ ] `scripts/bar-models-statusline.sh` reads Claude Code's status-line JSON on stdin and writes `{five_hour, seven_day, model, ts}` to `~/.claude/bar-models/snapshot.json` (passing input through if wrapping an existing command).
 - [ ] `Limits/LimitSource.swift` reads the official snapshot when fresh; `UsageStore` overrides the estimate's `LimitStatus` with `isOfficial: true` (renders `42%`, no `~`).
 - [ ] In-app **opt-in** "Enable live limits" that wraps `statusLine` in `~/.claude/settings.json` with explicit consent; FSEvents watch on the snapshot path.
 - **Deliverable:** with the hook on and Claude Code active, app 5h/7d % matches `/usage`.
@@ -137,7 +137,7 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 - [x] **Empty/first-run state** (`Aggregation/DataAvailability.swift`): a pure `loading / noSource / empty / ready` classification (tested), fed by a new `UsageStore.hasDataSources` signal computed off-main. The dropdown shows a friendly "No usage data found" (no `~/.claude`) or "No usage recorded yet" (empty folder); the menu-bar label shows `—` instead of `0`; quick-switch rows stay hidden until data exists.
 - [x] **Settings polish** (`App/SettingsView.swift`): grouped into General (launch-at-login) / Display (token metric, day boundaries = local/UTC timezone) / Updates (refresh cadence), each with help text.
 - [x] **`.app` bundle + release pipeline** (`scripts/package-app.sh`, `scripts/release.sh`, `VERSION`): builds a universal (arm64+x86_64) `LSUIElement` bundle; ad-hoc signs for local use, Developer ID signs (`--options runtime` + `--timestamp`) for release; then DMG (with `/Applications` symlink) → `notarytool submit --wait` → `stapler staple` → `spctl` verify. Verified locally: universal binary, `LSUIElement=true`, `codesign --verify --strict` passes on the ad-hoc bundle.
-- [ ] **Notarization** (`scripts/release.sh`): needs a Developer ID Application cert + a stored notarytool profile (the user's Apple Developer account). One command once the cert is installed: `scripts/release.sh --sign "Developer ID Application: NAME (TEAMID)" --notary-profile inline-usage-notary`.
+- [ ] **Notarization** (`scripts/release.sh`): needs a Developer ID Application cert + a stored notarytool profile (the user's Apple Developer account). One command once the cert is installed: `scripts/release.sh --sign "Developer ID Application: NAME (TEAMID)" --notary-profile bar-models-notary`.
 - **Deliverable:** code polish ✅ and the pipeline ✅ through signing; the notarized `.dmg` that launches clean on a second Mac is one `scripts/release.sh` run away, blocked only on the cert.
 
 ---

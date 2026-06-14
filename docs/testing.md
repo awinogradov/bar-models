@@ -2,7 +2,7 @@
 
 ## Strategy
 
-`UsageCore` is pure and UI-free, so the bulk of testing is fast, deterministic unit tests run with **Swift Testing** (`swift test`). The app layer is verified manually (menu-bar behavior, real-time updates) and by cross-checking totals against the `claude-usage` dashboard.
+`UsageCore` is pure and UI-free, so the bulk of testing is fast, deterministic unit tests run with **Swift Testing** (`swift test`). The app layer is verified manually (menu-bar behavior, real-time updates) and by cross-checking totals against an external reference dashboard.
 
 ## Unit tests (`Tests/UsageCoreTests/`)
 
@@ -23,11 +23,11 @@ Use small hand-built JSONL fixtures (`Fixtures/*.jsonl`) covering the traps:
 
 Run: `swift test`. Keep green after every step.
 
-## Cross-check against `claude-usage`
+## Cross-check against a reference dashboard
 
-Get the app's side with `swift run inline-usage --scan-once` — it prints **all-time per-model totals** (input / output / cacheWrite / cacheRead). Sum the dashboard's `http://localhost:8080/api/data` `daily_by_model` across all days (timezone-independent) and compare per model; the app's `cacheWrite` maps to the dashboard's `cache_creation`. Trigger the dashboard's own rebuild first (`POST /api/rescan`) so both read the same tree.
+Get the app's side with `swift run bar-models --scan-once` — it prints **all-time per-model totals** (input / output / cacheWrite / cacheRead). Compare those per-model figures against a trusted reference (another local-transcript usage tool, or the provider's own reporting) over the same `~/.claude` tree; note the app's `cacheWrite` is the provider's `cache_creation`. Make sure both sides scan the same snapshot before comparing.
 
-**Result (2026-06-14):** stable models (`fable-5`, `opus-4-7`, `sonnet-4-6`) matched the dashboard **exactly** across all four token buckets. The actively-used models (`opus-4-8` = current session, `haiku-4-5` = subagents) differed only by the turns written between the two scans — whichever tool scanned later was slightly ahead — confirming identical methodology, with the deltas explained entirely by scan timing, not by a parsing/dedup difference.
+**Result (2026-06-14):** stable models (`fable-5`, `opus-4-7`, `sonnet-4-6`) matched the reference **exactly** across all four token buckets. The actively-used models (`opus-4-8` = current session, `haiku-4-5` = subagents) differed only by the turns written between the two scans — whichever tool scanned later was slightly ahead — confirming identical methodology, with the deltas explained entirely by scan timing, not by a parsing/dedup difference.
 
 ## Manual / app verification
 

@@ -23,24 +23,24 @@ If this lists no valid identity, signing/notarization cannot proceed — install
 # 1. Sign the app (hardened runtime, secure timestamp)
 codesign --force --options runtime --timestamp \
   --sign "Developer ID Application: <Name> (<TEAMID>)" \
-  build/inline-usage.app
+  build/bar-models.app
 # Sign nested code (frameworks/bundles) inner-first if any; avoid --deep on complex bundles.
 
 # 2. Build the DMG (the signed .app + an /Applications symlink)
-hdiutil create -volname "inline-usage" -srcfolder build/inline-usage.app \
-  -ov -format UDZO dist/inline-usage.dmg
+hdiutil create -volname "bar-models" -srcfolder build/bar-models.app \
+  -ov -format UDZO dist/bar-models.dmg
 # (or use create-dmg for a nicer layout)
 
 # 3. Notarize (store creds once: notarytool store-credentials)
-xcrun notarytool submit dist/inline-usage.dmg \
-  --keychain-profile "inline-usage-notary" --wait
+xcrun notarytool submit dist/bar-models.dmg \
+  --keychain-profile "bar-models-notary" --wait
 
 # 4. Staple the ticket (offline Gatekeeper validation)
-xcrun stapler staple dist/inline-usage.dmg
+xcrun stapler staple dist/bar-models.dmg
 
 # 5. Verify
-spctl -a -t open --context context:primary-signature -v dist/inline-usage.dmg
-codesign --verify --strict --verbose=2 build/inline-usage.app
+spctl -a -t open --context context:primary-signature -v dist/bar-models.dmg
+codesign --verify --strict --verbose=2 build/bar-models.app
 ```
 
 ## Notes

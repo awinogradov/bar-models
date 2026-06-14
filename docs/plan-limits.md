@@ -20,7 +20,7 @@ Claude Code pipes JSON to any configured status-line command, and that JSON incl
 
 So we capture it:
 
-1. Ship `scripts/inline-usage-statusline.sh` — reads that JSON on stdin, writes `{five_hour, seven_day, model, ts}` to `~/.claude/inline-usage/snapshot.json`, and (if wrapping an existing status-line command) passes the input through so the user's existing status line still renders.
+1. Ship `scripts/bar-models-statusline.sh` — reads that JSON on stdin, writes `{five_hour, seven_day, model, ts}` to `~/.claude/bar-models/snapshot.json`, and (if wrapping an existing status-line command) passes the input through so the user's existing status line still renders.
 2. The app offers a **one-click, opt-in** "Enable live limits": with explicit consent it registers the helper as the `statusLine` command in `~/.claude/settings.json`, wrapping any command already there.
 3. The app watches the snapshot file (FSEvents) and shows exact "5h 42% · 7d 31%".
 

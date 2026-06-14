@@ -1,8 +1,8 @@
-# inline-usage
+# bar-models
 
 A tiny native macOS **menu-bar app** that shows **one** glanceable AI-coding usage number — and lets you switch which one with a single tap, updating in real time.
 
-Inspired by [One Thing](https://sindresorhus.com/one-thing) (show a single value, near-zero chrome) and the data model of `claude-usage` (a full dashboard). This is their intersection: one configurable metric, always visible.
+Inspired by [One Thing](https://sindresorhus.com/one-thing): show a single value, near-zero chrome. Where a full usage dashboard gives you charts, tables, and history, bar-models gives you the one number you actually glance at — one configurable metric, always visible.
 
 - **Claude Code first**, but architected so **Codex CLI / Gemini CLI** and others plug in behind a `UsageProvider` protocol.
 - Reads local usage transcripts (`~/.claude/projects/**/*.jsonl`) — no network, no account, all on-device.
@@ -20,8 +20,18 @@ Early build. See [`docs/`](docs/) for the full design:
 ## Build
 
 ```sh
-swift build      # build UsageCore (the engine)
-swift test       # run the unit tests
+swift build                       # build UsageCore (the engine) + the app
+swift test                        # run the unit tests
+swift run bar-models              # run the menu-bar app (dev, un-bundled)
+swift run bar-models --scan-once  # headless: print per-period totals and exit
 ```
 
-Requires macOS 14+, Swift 6 toolchain. The SwiftUI app target is built in Xcode.
+To produce a distributable `.app` bundle (universal, menu-bar-only via `LSUIElement`):
+
+```sh
+scripts/package-app.sh            # ad-hoc signed, for local use
+```
+
+See [`docs/distribution.md`](docs/distribution.md) for signing + notarization (`scripts/release.sh`).
+
+Requires macOS 14+ and a Swift 6 toolchain.
