@@ -54,30 +54,36 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
    - [x] Label shows the abbreviated value (K/M/B); dropdown shows the exact grouped value + `in · out · cache-rd` breakdown + Refresh/Quit; "Loading…" until the first scan completes.
    - [x] `--scan-once` headless mode (`Main.swift`) prints per-period totals and exits — the real-data smoke test.
    - **Deliverable:** ✅ launches, shows the correct deduped 13.1M without stalling the menu bar.
-   - *Deferred:* the distributable `.app` bundle with `LSUIElement` (M5) and a dedicated `MenuBarLabelView` (M2) — the dev build runs un-bundled via `swift run`.
+   - *Deferred:* the distributable `.app` bundle with `LSUIElement` (M5); the dev build runs un-bundled via `swift run`. (The menu-bar label stays an inlined `Text` — no separate view needed.)
 
 ---
 
-## M2 — Fast switch + settings + real-time
+## M2 — Fast switch + settings + real-time ✅
 
-1. **Selection model** (`Metrics/`)
-   - [ ] `Metric {tokens, cost, limit5h, limitWeekly}`, `TokenDefinition` (exists), `MetricSelection {provider, metric, period, tokenDefinition}` + `renderTitle(snapshot) -> String` + `renderHeader`.
-   - **Deliverable:** unit tests for `renderTitle` across combos.
+*Built in two parts: M2a (selectable metric + fast-switch + settings) and M2b (real-time FSEvents + incremental scan). GUI confirmed; 36 tests green.*
+
+1. **Selection model** (`Metrics/MetricSelection.swift`)
+   - [x] `Metric {tokens, cost, limit5h, limitWeekly}` + `MetricSelection {provider, metric, period, tokenDefinition}`.
+   - [x] Pure rendering: `render(from:)` (abbreviated), `renderExact(from:)` (grouped), `label`, `header`. Cost/limits render `—` until M3/M4.
+   - [x] Persistence via `jsonString` / `init?(jsonString:)` — deliberately **not** `RawRepresentable<String>`: the stdlib's `Codable`-for-`RawRepresentable` default shadows the member-wise coding and recurses (`rawValue` → `encode(self)` → `rawValue` → …), a SIGBUS stack overflow that the round-trip test caught.
+   - **Deliverable:** ✅ tests — render-by-definition, period switch, labels/headers, cost/limit placeholders, JSON round-trip.
 2. **Number formatting** (`Formatting/NumberFormatting.swift`)
-   - [x] K/M/B abbreviation + grouped exact (`UsageFormat.tokens` / `.grouped`) — landed in M1, with tests (999 → "999", 1_500 → "1.5K", 38_214_556 → "38.2M").
-   - [ ] Currency and integer-percent formatting (for the cost and plan-limit metrics).
+   - [x] K/M/B abbreviation + grouped exact (landed in M1, with tests: 999 → "999", 1_500 → "1.5K", 38_214_556 → "38.2M").
+   - [ ] Currency and integer-percent formatting (for the cost and plan-limit metrics — M3/M4).
 3. **Fast-switch dropdown** (`App/MenuContentView.swift`)
-   - [ ] Quick-switch rows (the mockup in `architecture.md`) with live per-row values + checkmark on active; one tap updates selection.
-   - [ ] Recompute from in-memory events on switch (no rescan).
-   - **Deliverable:** flipping rows updates the menu-bar value instantly.
+   - [x] Quick-switch rows (token periods: Today / This Week / This Month / Last 30 Days) with live per-row values + a checkmark on the active one; one tap updates the selection. (Cost/limit rows join in M3/M4.)
+   - [x] Recomputes from the in-memory snapshot on switch — no rescan.
+   - **Deliverable:** ✅ flipping rows updates the menu-bar value instantly.
 4. **Real-time refresh** (`App/RefreshController.swift`)
-   - [ ] FSEvents recursive watch on each data root + the limit snapshot path; debounce ~300–500 ms; trigger `UsageStore.refresh()`.
-   - [ ] Liveness `Timer` so rolling windows advance when idle.
-   - [ ] "Updates" setting: Real-time (default) / 1s / 2s / 5s / 10s / 30s.
-   - **Deliverable:** writing a new Claude turn updates the menu bar within the debounce window; no main-thread stalls.
-5. **Settings + persistence** (`App/SettingsView.swift`, `@AppStorage`)
-   - [ ] Keys: `provider, metric, period, tokenDefinition, refreshInterval, bucketTimeZone, …`.
-   - **Deliverable:** settings persist across relaunch.
+   - [x] FSEvents recursive watch on each data root; ~400 ms debounce; triggers `UsageStore.refresh()`. (Limit-snapshot watch is M4.)
+   - [x] Optional interval `Timer` for the non-real-time cadences (also advances rolling windows when idle).
+   - [x] "Updates" setting: Real-time (default) / 1s / 2s / 5s / 10s / 30s.
+   - [x] **Incremental scan pulled forward from M4** (`Scanning/ScanState.swift`, `UsageScanner+Incremental.swift`): re-stat all files, read only new/grown ones (resume from byte offset), accumulate into the deduped map. First pass full; later passes read a few KB — cheap enough to run on every change.
+   - **Deliverable:** ✅ a new Claude turn updates the menu bar within the debounce window; refresh is incremental, no main-thread stall.
+5. **Settings + persistence** (`App/SettingsView.swift`)
+   - [x] `Settings` scene with pickers: token metric, day boundaries (local/UTC), updates cadence.
+   - [x] Persisted via **manual `UserDefaults`** (the whole selection as one JSON string; zone + interval as enum raw values) — not `@AppStorage`, which doesn't compose with `@Observable`.
+   - **Deliverable:** ✅ settings persist across relaunch.
 
 ---
 
@@ -101,9 +107,10 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
    - [ ] Budget = custom (user) → P90 of historical block sums (`billableTotal`) → plan multiplier seed. % = used / budget, labeled "estimate".
    - [ ] Weekly = rolling-7-day sum ÷ weekly budget.
    - **Deliverable:** with the hook off, a labeled estimate renders; window-grouping unit tests pass.
-3. **Incremental scan** (now that limits need frequent refresh)
-   - [ ] `FileScanState{path,mtime,size,byteOffset}` persisted; skip unchanged files; resume grown files from `byteOffset`; re-parse on shrink/rotate.
-   - **Deliverable:** a refresh after one new turn touches ~1 file in milliseconds.
+3. **Persisted incremental scan** (extends the in-memory scan pulled into M2)
+   - [x] In-memory incremental scan — skip unchanged files, resume grown from `byteOffset`, accumulate deduped events — landed in **M2** (real-time needs it).
+   - [ ] Persist `FileScanState` across launches so the first post-launch scan is also incremental; refine shrink/rotate handling.
+   - **Deliverable:** met in-session in M2 (a refresh after one new turn reads a few KB); cross-launch persistence remaining.
 - [ ] Menu-bar color/symbol turns orange/red past 80%/100%.
 
 ---
