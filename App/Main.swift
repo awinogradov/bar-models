@@ -31,5 +31,19 @@ struct Main {
         }
         let m = snapshot.tokens(.thisMonth)
         print("\nthis month — in \(UsageFormat.grouped(m.input)) · out \(UsageFormat.grouped(m.output)) · cache-write \(UsageFormat.grouped(m.cacheWrite)) · cache-read \(UsageFormat.grouped(m.cacheRead))")
+
+        // All-time per-model raw totals, for cross-checking the claude-usage /api/data dashboard.
+        var byModel: [String: TokenCounts] = [:]
+        var grand = TokenCounts.zero
+        for event in events {
+            byModel[event.model, default: .zero] += event.tokens
+            grand += event.tokens
+        }
+        print("\nall-time per model — input / output / cacheWrite / cacheRead:")
+        for model in byModel.keys.sorted() {
+            let t = byModel[model]!
+            print("  \(model): \(t.input) / \(t.output) / \(t.cacheWrite) / \(t.cacheRead)")
+        }
+        print("  TOTAL: \(grand.input) / \(grand.output) / \(grand.cacheWrite) / \(grand.cacheRead)  (events \(events.count))")
     }
 }
