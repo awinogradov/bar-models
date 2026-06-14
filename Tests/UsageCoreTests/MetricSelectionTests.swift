@@ -35,13 +35,14 @@ struct MetricSelectionTests {
         #expect(MetricSelection(metric: .limit5h).label == "Plan limit — 5h")
     }
 
-    @Test("limits are placeholders until M4; cost renders")
-    func placeholders() {
+    @Test("cost renders; limits show — without data")
+    func renderingByMetric() {
         let s = snapshot()
+        // Cost renders; the hand-built snapshot has no baked cost ⇒ $0.00.
+        #expect(MetricSelection(metric: .cost, period: .thisMonth).render(from: s) == "$0.00")
+        // Limits render — when the snapshot carries no limit status (unavailable).
         #expect(MetricSelection(metric: .limit5h).render(from: s) == "—")
         #expect(MetricSelection(metric: .limitWeekly).render(from: s) == "—")
-        // Cost now renders; the hand-built snapshot has no baked cost ⇒ $0.00.
-        #expect(MetricSelection(metric: .cost, period: .thisMonth).render(from: s) == "$0.00")
     }
 
     @Test("nil snapshot renders the loading glyph")
