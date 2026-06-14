@@ -131,7 +131,7 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ## M5 — Polish & notarize — code ✅ · notarization pending (Developer ID cert)
 
-*Polish (launch-at-login, empty/first-run state, settings sections) built; 50 tests green. The `.app` bundle + release pipeline are scripted and verified through ad-hoc signing; the notarized `.dmg` needs a Developer ID cert (none installed — see `distribution.md`).*
+*Polish (launch-at-login, empty/first-run state, settings sections) built; 50 tests green. The `.app` bundle + release pipeline are scripted and verified through ad-hoc signing; the notarized `.dmg` needs a Developer ID cert (none installed — see `09-distribution.md`).*
 
 - [x] **Launch-at-login** (`App/LaunchAtLogin.swift`): `SMAppService.mainApp` register/unregister behind a Settings toggle. Best-effort — registration only sticks for a signed, bundled `.app`, so the toggle mirrors the real `status` (a dev `swift run` can't register; logged via `OSLog`, never fatal).
 - [x] **Empty/first-run state** (`Aggregation/DataAvailability.swift`): a pure `loading / noSource / empty / ready` classification (tested), fed by a new `UsageStore.hasDataSources` signal computed off-main. The dropdown shows a friendly "No usage data found" (no `~/.claude`) or "No usage recorded yet" (empty folder); the menu-bar label shows `—` instead of `0`; quick-switch rows stay hidden until data exists.

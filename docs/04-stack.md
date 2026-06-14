@@ -26,7 +26,7 @@
 
 ## Distribution
 
-Un-sandboxed (reads `~/.claude` directly), **Hardened Runtime on**, Developer ID signed, notarized `.dmg`. See `distribution.md`.
+Un-sandboxed (reads `~/.claude` directly), **Hardened Runtime on**, Developer ID signed, notarized `.dmg`. See `09-distribution.md`.
 
 ## Non-choices (considered, rejected)
 

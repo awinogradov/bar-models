@@ -30,7 +30,7 @@ This is the only write the app ever makes to Claude's files, and only on explici
 
 When there's no fresh snapshot (hook not enabled, or Claude Code not running):
 
-- Group events into rolling 5-hour blocks (see `claude-calculation.md`), sum the active block's `billableTotal`.
+- Group events into rolling 5-hour blocks (see `05-claude-calculation.md`), sum the active block's `billableTotal`.
 - **Budget** = custom value the user entered → else P90 of historical block sums (auto-calibration, à la community monitors) → else the plan multiplier against a conservative seed.
 - `% = used / budget`, rendered with an explicit "estimate" label and low/normal confidence based on history depth.
 - Weekly = rolling-7-day `billableTotal` ÷ weekly budget.

@@ -2,7 +2,7 @@
 #
 # Assemble a release `bar-models.app` bundle from the SwiftPM executable.
 # The app is menu-bar-only (LSUIElement) and un-sandboxed (reads ~/.claude
-# directly). See docs/distribution.md for the full release pipeline.
+# directly). See docs/09-distribution.md for the full release pipeline.
 #
 # Usage:
 #   scripts/package-app.sh                 # ad-hoc sign (runs locally)

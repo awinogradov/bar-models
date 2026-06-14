@@ -37,7 +37,7 @@ A developer who uses Claude Code daily on macOS, on a Pro/Max subscription (or A
 
 ## Scope by milestone
 
-See [`implementation.md`](implementation.md) for the step-by-step build. High level:
+See [`07-implementation.md`](07-implementation.md) for the step-by-step build. High level:
 
 - **M0** Docs + engine scaffold (`UsageProvider` protocol, core models, pricing).
 - **M1** Real parsing + one number (tokens · this month).

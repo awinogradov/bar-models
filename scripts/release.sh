@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Build, sign, package, notarize, staple, and verify a distributable DMG.
-# This is the M5 release pipeline from docs/distribution.md.
+# This is the M5 release pipeline from docs/09-distribution.md.
 #
 # Prerequisites (one-time):
 #   • a "Developer ID Application" certificate in the login keychain

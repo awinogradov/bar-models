@@ -74,4 +74,4 @@ ISO-8601 UTC with fractional seconds. Parse with a cached `en_US_POSIX` / GMT `D
 
 ## 5-hour window (limit estimate)
 
-Sort deduped events ascending. A block starts at the first event not within 5h of the current block's start and contains events in `[start, start+5h)`. The active block is the one containing `now` (clamp timestamps `> now` for clock skew). Used tokens = Σ `billableTotal` in the active block. See `plan-limits.md` for how that becomes a percentage.
+Sort deduped events ascending. A block starts at the first event not within 5h of the current block's start and contains events in `[start, start+5h)`. The active block is the one containing `now` (clamp timestamps `> now` for clock skew). Used tokens = Σ `billableTotal` in the active block. See `06-plan-limits.md` for how that becomes a percentage.

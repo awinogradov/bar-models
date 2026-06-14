@@ -37,7 +37,7 @@ Updates are event-driven, not polled:
 
 ## Estimated cost
 
-Per-model token sums × an authoritative price table (input / output / cache-write / cache-read per million). Unknown models are flagged and excluded (never silently zeroed). Cost is API-equivalent; the UI notes that Pro/Max subscribers don't pay it directly. See `claude-calculation.md`.
+Per-model token sums × an authoritative price table (input / output / cache-write / cache-read per million). Unknown models are flagged and excluded (never silently zeroed). Cost is API-equivalent; the UI notes that Pro/Max subscribers don't pay it directly. See `05-claude-calculation.md`.
 
 ## Plan-limit %
 
@@ -45,7 +45,7 @@ Two sources, official first:
 - **Official (exact):** an opt-in status-line hook captures Claude Code's own `rate_limits.five_hour/seven_day.used_percentage`.
 - **Estimate (labeled):** rolling-window token sums ÷ a calibrated budget when the hook isn't active.
 
-See `plan-limits.md`.
+See `06-plan-limits.md`.
 
 ## Settings
 
