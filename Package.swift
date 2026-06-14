@@ -9,9 +9,11 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "UsageCore", targets: ["UsageCore"]),
+        .executable(name: "inline-usage", targets: ["InlineUsage"]),
     ],
     targets: [
         .target(name: "UsageCore"),
+        .executableTarget(name: "InlineUsage", dependencies: ["UsageCore"], path: "App"),
         .testTarget(name: "UsageCoreTests", dependencies: ["UsageCore"]),
     ]
 )
