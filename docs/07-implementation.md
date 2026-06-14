@@ -101,9 +101,9 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ---
 
-## M4 — Plan limits — M4a ✅ (estimate) · M4b pending (official hook)
+## M4 — Plan limits — M4a ✅ (estimate) · M4b ✅ (official hook)
 
-*M4a (read-only estimate) built & GUI-confirmed; 46 tests green; 5-hour ~10% / weekly ~30% on real data. M4b (the status-line hook) is next.*
+*M4a (read-only estimate) built & GUI-confirmed. M4b (the status-line hook) built; 73 tests green; `--scan-once` shows `official` with a fresh snapshot, the labeled estimate otherwise.*
 
 ### M4a — Estimate (read-only) ✅ (`Limits/`)
 
@@ -113,14 +113,14 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 - [x] UI: **Plan limit — 5h / Weekly** quick-switch rows render `~NN%` (`—` when no data); the dropdown shows the basis; the menu-bar value turns **amber past 80% / red past 100%**.
 - [x] `--scan-once` prints the limit estimates.
 - **Deliverable:** ✅ a labeled estimate renders with the hook off; windower / P90 / rolling-sum / custom-budget / empty tests pass.
-- *Deferred to M4b:* `PlanLimits`/`Plan` (Pro / Max 5× / 20×) — meaningful only once the official % gives an absolute reference.
+- *Deferred beyond M4b:* `PlanLimits`/`Plan` (Pro / Max 5× / 20×) — the official path yields an absolute % directly, so a plan multiplier has no consumer yet; the worthwhile follow-up is calibrating the estimate's fallback budget from observed official readings (`budget ≈ used ÷ official%`).
 
-### M4b — Official path (pending)
+### M4b — Official path ✅
 
-- [ ] `scripts/bar-models-statusline.sh` reads Claude Code's status-line JSON on stdin and writes `{five_hour, seven_day, model, ts}` to `~/.claude/bar-models/snapshot.json` (passing input through if wrapping an existing command).
-- [ ] `Limits/LimitSource.swift` reads the official snapshot when fresh; `UsageStore` overrides the estimate's `LimitStatus` with `isOfficial: true` (renders `42%`, no `~`).
-- [ ] In-app **opt-in** "Enable live limits" that wraps `statusLine` in `~/.claude/settings.json` with explicit consent; FSEvents watch on the snapshot path.
-- **Deliverable:** with the hook on and Claude Code active, app 5h/7d % matches `/usage`.
+- [x] `scripts/bar-models-statusline.sh` reads Claude Code's status-line JSON on stdin and writes `{five_hour, seven_day, five_hour_resets_at, seven_day_resets_at, model, ts}` to `~/.claude/bar-models/snapshot.json` **atomically** (temp + `mv`), passing input through to any wrapped prior command. Best-effort and guarded — a missing `jq` (it prepends the common bin paths first) or bad input never breaks the status line.
+- [x] `Limits/LimitSource.swift` reads the snapshot when fresh (staleness threshold; also drops a window once its `resets_at` has passed) and converts Claude Code's 0–100 to the `LimitStatus` 0…1 scale. `Aggregator` gained an `official:` argument and uses `official ?? estimate` per window; `UsageStore` reads `LimitSource` inside its detached scan, so a fresh reading renders `42%` (no `~`) and a stale/absent one falls back to the labeled estimate.
+- [x] In-app **opt-in** "Enable live limits" (`App/LiveLimits.swift`, Settings → Plan limits) installs the bundled script to `~/.claude/bar-models/` and wraps `statusLine` in `~/.claude/settings.json` with explicit consent — atomic write + one-time `settings.json.bak`, all sibling keys preserved, idempotent, and **disable verifies the hook is still ours** before restoring/removing. The existing FSEvents watch picks up the snapshot dir when present; any IO failure reverts the toggle (à la launch-at-login).
+- **Deliverable:** ✅ with the hook on and Claude Code active, the app's 5h/7d % matches `/usage`; `--scan-once` prints `official` with a fresh snapshot and `est · …` otherwise. Covered by `LimitSourceTests`, `OfficialOverrideTests`, `StatusLineConfigTests`, `StatusLineScriptTests`, and `UsageStoreTests`.
 
 ### Persisted incremental scan (extends M2's in-memory scan)
 
