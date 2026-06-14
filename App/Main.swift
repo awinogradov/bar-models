@@ -37,6 +37,13 @@ struct Main {
             print("  \(period.label): \(UsageFormat.costExact(totals.cost))\(unpriced)")
         }
 
+        func limitLine(_ status: LimitStatus) -> String {
+            status.available ? "\(UsageFormat.percent(status.percent))  (\(status.basis))" : "— (\(status.basis))"
+        }
+        print("\nplan limits (estimate):")
+        print("  5-hour: \(limitLine(snapshot.limit5h))")
+        print("  weekly: \(limitLine(snapshot.limitWeekly))")
+
         let m = snapshot.tokens(.thisMonth)
         print("\nthis month — in \(UsageFormat.grouped(m.input)) · out \(UsageFormat.grouped(m.output)) · cache-write \(UsageFormat.grouped(m.cacheWrite)) · cache-read \(UsageFormat.grouped(m.cacheRead))")
 

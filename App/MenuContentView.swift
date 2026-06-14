@@ -48,6 +48,11 @@ struct MenuContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if let detail = model.limitDetail {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         } else {
             Label("Loading…", systemImage: "hourglass")
                 .foregroundStyle(.secondary)

@@ -9,6 +9,9 @@ struct ModelLine: Identifiable, Equatable {
     let value: String
 }
 
+/// Threshold band for the menu-bar tint on limit metrics.
+enum LimitLevel { case normal, warn, over }
+
 /// Owns the `UsageStore`, the current `MetricSelection`, and settings; derives
 /// the single displayed value and drives real-time refresh. Switching the
 /// metric/period recomputes from the in-memory snapshot — no rescan. Persistence
@@ -74,6 +77,28 @@ final class AppModel {
         return tokens > 0 ? "excludes \(UsageFormat.tokens(tokens)) tokens from unpriced models" : nil
     }
 
+    /// Provenance line shown under a limit metric (e.g. "est · P90 of 312 blocks").
+    var limitDetail: String? {
+        guard let status = currentLimitStatus, status.available else { return nil }
+        return status.basis
+    }
+
+    /// Menu-bar tint band for the active limit metric.
+    var titleLevel: LimitLevel {
+        guard let status = currentLimitStatus, status.available else { return .normal }
+        if status.percent >= 1.0 { return .over }
+        if status.percent >= 0.8 { return .warn }
+        return .normal
+    }
+
+    private var currentLimitStatus: LimitStatus? {
+        switch selection.metric {
+        case .limit5h: return store.snapshot?.limit5h
+        case .limitWeekly: return store.snapshot?.limitWeekly
+        default: return nil
+        }
+    }
+
     // MARK: Fast switch
 
     var menuOptions: [MetricSelection] {
@@ -85,8 +110,12 @@ final class AppModel {
         func cost(_ period: Period) -> MetricSelection {
             MetricSelection(provider: provider, metric: .cost, period: period, tokenDefinition: definition)
         }
+        func limit(_ metric: Metric) -> MetricSelection {
+            MetricSelection(provider: provider, metric: metric, period: .today, tokenDefinition: definition)
+        }
         return [tokens(.today), tokens(.thisWeek), tokens(.thisMonth), tokens(.rolling30),
-                cost(.thisMonth), cost(.today)]
+                cost(.thisMonth), cost(.today),
+                limit(.limit5h), limit(.limitWeekly)]
     }
 
     func isSelected(_ option: MetricSelection) -> Bool {
