@@ -10,7 +10,8 @@ public struct Aggregator: Sendable {
         _ events: [UsageEvent],
         using bucketer: PeriodBucketer,
         pricing: PricingTable = .claude,
-        limitBudgets: LimitBudgets = LimitBudgets()
+        limitBudgets: LimitBudgets = LimitBudgets(),
+        official: OfficialLimits = OfficialLimits()
     ) -> UsageSnapshot {
         var totals: [Period: PeriodTotals] = [:]
         for period in Period.allCases { totals[period] = PeriodTotals() }
@@ -29,9 +30,11 @@ public struct Aggregator: Sendable {
             totals[period]!.unknownModelTokens = breakdown.unknownModelTokens
         }
 
+        // Official status-line readings supersede the estimate per window; a nil
+        // window (absent, stale, or reset) falls back to the calibrated estimate.
         let estimator = LimitEstimator()
-        let limit5h = estimator.fiveHour(events, now: bucketer.now, customBudget: limitBudgets.fiveHour)
-        let limitWeekly = estimator.weekly(events, now: bucketer.now, customBudget: limitBudgets.weekly)
+        let limit5h = official.fiveHour ?? estimator.fiveHour(events, now: bucketer.now, customBudget: limitBudgets.fiveHour)
+        let limitWeekly = official.weekly ?? estimator.weekly(events, now: bucketer.now, customBudget: limitBudgets.weekly)
 
         return UsageSnapshot(
             generatedAt: bucketer.now,
