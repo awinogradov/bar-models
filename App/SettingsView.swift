@@ -37,6 +37,17 @@ struct SettingsView: View {
                 }
                 .help("Real-time watches ~/.claude for changes; the intervals also refresh on a timer.")
             }
+
+            Section("Plan limits") {
+                Toggle("Enable live limits (official %)", isOn: liveLimits)
+                    .help("Writes a status-line hook to ~/.claude/settings.json (with your consent) so the 5-hour and weekly figures come from Claude Code's official numbers instead of an estimate. Wraps any existing status line, is reversible, and requires jq.")
+                if let warning = model.liveLimitsWarning {
+                    Text(warning)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 380)
@@ -57,5 +68,9 @@ struct SettingsView: View {
 
     private var interval: Binding<RefreshInterval> {
         Binding(get: { model.refreshInterval }, set: { model.setRefreshInterval($0) })
+    }
+
+    private var liveLimits: Binding<Bool> {
+        Binding(get: { model.liveLimitsEnabled }, set: { model.setLiveLimitsEnabled($0) })
     }
 }
