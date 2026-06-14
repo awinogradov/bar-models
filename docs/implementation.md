@@ -70,7 +70,7 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 2. **Number formatting** (`Formatting/NumberFormatting.swift`)
    - [x] K/M/B abbreviation + grouped exact (landed in M1, with tests: 999 → "999", 1_500 → "1.5K", 38_214_556 → "38.2M").
    - [x] Currency formatting (`UsageFormat.cost` / `costExact`) — added in M3.
-   - [ ] Integer-percent formatting (for the plan-limit metrics — M4).
+   - [x] Integer-percent formatting (`UsageFormat.percent`) — added in M4a.
 3. **Fast-switch dropdown** (`App/MenuContentView.swift`)
    - [x] Quick-switch rows (token periods: Today / This Week / This Month / Last 30 Days) with live per-row values + a checkmark on the active one; one tap updates the selection. (Cost/limit rows join in M3/M4.)
    - [x] Recomputes from the in-memory snapshot on switch — no rescan.
@@ -101,22 +101,31 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 
 ---
 
-## M4 — Plan limits
+## M4 — Plan limits — M4a ✅ (estimate) · M4b pending (official hook)
 
-1. **Official path** (`Limits/LimitSource.swift`, `scripts/inline-usage-statusline.sh`)
-   - [ ] Helper script reads Claude Code's status-line JSON on stdin and writes `{five_hour, seven_day, model, ts}` to `~/.claude/inline-usage/snapshot.json` (passing the input through if wrapping an existing command).
-   - [ ] App offers one-click, opt-in registration into `~/.claude/settings.json`'s `statusLine` (wrap any existing command, with explicit consent); watch the snapshot via FSEvents.
-   - **Deliverable:** with the hook on and Claude Code active, app 5h/7d % matches `/usage`.
-2. **Estimate fallback** (`Limits/FiveHourWindower.swift`, `LimitEstimator.swift`, `PlanLimits.swift`)
-   - [ ] Group sorted events into rolling 5h blocks (start at first activity, last 5h). Active block = the one containing `now` (clamp future timestamps).
-   - [ ] Budget = custom (user) → P90 of historical block sums (`billableTotal`) → plan multiplier seed. % = used / budget, labeled "estimate".
-   - [ ] Weekly = rolling-7-day sum ÷ weekly budget.
-   - **Deliverable:** with the hook off, a labeled estimate renders; window-grouping unit tests pass.
-3. **Persisted incremental scan** (extends the in-memory scan pulled into M2)
-   - [x] In-memory incremental scan — skip unchanged files, resume grown from `byteOffset`, accumulate deduped events — landed in **M2** (real-time needs it).
-   - [ ] Persist `FileScanState` across launches so the first post-launch scan is also incremental; refine shrink/rotate handling.
-   - **Deliverable:** met in-session in M2 (a refresh after one new turn reads a few KB); cross-launch persistence remaining.
-- [ ] Menu-bar color/symbol turns orange/red past 80%/100%.
+*M4a (read-only estimate) built & GUI-confirmed; 46 tests green; 5-hour ~10% / weekly ~30% on real data. M4b (the status-line hook) is next.*
+
+### M4a — Estimate (read-only) ✅ (`Limits/`)
+
+- [x] `FiveHourWindower` groups events into 5-hour blocks (start at first activity, last 5h); future timestamps are clamped (`timestamp <= now`).
+- [x] `LimitEstimator`: 5-hour = active-block billable ÷ **P90 of historical blocks**; weekly = rolling-7-day billable ÷ **P90 of 7-day rolling sums** (two-pointer, O(n)). Budget order: **custom → P90 → unavailable** — *no plan-multiplier seed* (a token seed can't map to `billableTotal`, which is what's summed). Everything flagged `est`; `LimitStatus{percent, isOfficial, available, basis}` baked into the snapshot by the `Aggregator`.
+- [x] `LimitBudgets` carries optional custom budgets (the settings UI for them lands with M4b).
+- [x] UI: **Plan limit — 5h / Weekly** quick-switch rows render `~NN%` (`—` when no data); the dropdown shows the basis; the menu-bar value turns **amber past 80% / red past 100%**.
+- [x] `--scan-once` prints the limit estimates.
+- **Deliverable:** ✅ a labeled estimate renders with the hook off; windower / P90 / rolling-sum / custom-budget / empty tests pass.
+- *Deferred to M4b:* `PlanLimits`/`Plan` (Pro / Max 5× / 20×) — meaningful only once the official % gives an absolute reference.
+
+### M4b — Official path (pending)
+
+- [ ] `scripts/inline-usage-statusline.sh` reads Claude Code's status-line JSON on stdin and writes `{five_hour, seven_day, model, ts}` to `~/.claude/inline-usage/snapshot.json` (passing input through if wrapping an existing command).
+- [ ] `Limits/LimitSource.swift` reads the official snapshot when fresh; `UsageStore` overrides the estimate's `LimitStatus` with `isOfficial: true` (renders `42%`, no `~`).
+- [ ] In-app **opt-in** "Enable live limits" that wraps `statusLine` in `~/.claude/settings.json` with explicit consent; FSEvents watch on the snapshot path.
+- **Deliverable:** with the hook on and Claude Code active, app 5h/7d % matches `/usage`.
+
+### Persisted incremental scan (extends M2's in-memory scan)
+
+- [x] In-memory incremental scan landed in **M2** (real-time needs it).
+- [ ] Persist `FileScanState` across launches so the first post-launch scan is also incremental; refine shrink/rotate handling.
 
 ---
 
