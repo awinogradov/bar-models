@@ -36,4 +36,33 @@ struct ScannerTests {
         )
         #expect(events.isEmpty)
     }
+
+    @Test("incremental scan reads only appended lines and advances the offset")
+    func incremental() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "inc-\(UUID().uuidString)")
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let file = root.appending(path: "s.jsonl")
+        let scanner = UsageScanner()
+
+        try Data((line("m1", input: 1) + "\n").utf8).write(to: file)
+        var state = scanner.updateState(ScanState(), roots: [root], provider: ClaudeProvider())
+        #expect(state.events.count == 1)
+        let firstOffset = state.files.values.first?.offset ?? 0
+        #expect(firstOffset > 0)
+
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data((line("m2", input: 2) + "\n").utf8))
+        try handle.close()
+
+        state = scanner.updateState(state, roots: [root], provider: ClaudeProvider())
+        #expect(state.events.count == 2) // m1 retained, m2 appended
+        #expect((state.files.values.first?.offset ?? 0) > firstOffset)
+
+        // No change → no growth, still 2 events.
+        state = scanner.updateState(state, roots: [root], provider: ClaudeProvider())
+        #expect(state.events.count == 2)
+    }
 }
