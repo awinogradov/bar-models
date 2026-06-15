@@ -125,7 +125,7 @@ Work top-to-bottom. Each step has a `[ ]` todo checklist and a **Deliverable** (
 ### Persisted incremental scan (extends M2's in-memory scan)
 
 - [x] In-memory incremental scan landed in **M2** (real-time needs it).
-- [ ] Persist `FileScanState` across launches so the first post-launch scan is also incremental; refine shrink/rotate handling.
+- [x] Persist the full `ScanState` (per-file cursors **and** the deduped event map) across launches via `Scanning/ScanStateStore.swift` — a versioned, atomic JSON cache at `~/Library/Caches/bar-models/scan-state.json`. The first post-launch scan resumes from saved offsets; a corrupt / version-mismatched / stale cache falls back to a full scan. Shrink/rotate refined with `inode` + birthtime identity on `FileScanState`, so a replaced (or inode-reused) file re-reads from 0; `UsageStore` loads off-main on the first refresh and saves debounced (by value) after each.
 
 ---
 

@@ -23,6 +23,8 @@ Use small hand-built JSONL fixtures (`Fixtures/*.jsonl`) covering the traps:
 - **Official limits** — `LimitSource` freshness boundary (`<=`), window-reset drop, 0–100 → 0…1 conversion, absent/malformed; `Aggregator` `official ?? estimate` override + stale-snapshot fallback; `UsageStore` publishes official when fresh.
 - **Status-line hook** — the script, driven as a subprocess with a temp `HOME`, writes the snapshot from `rate_limits`, nulls when absent, finds `jq` on a minimal `PATH`, and passes stdin through a wrapped command (exit status preserved).
 - **settings.json transform** — `StatusLineConfig` enable wraps/creates idempotently; disable restores the exact prior (args + quotes) or removes it; sibling keys preserved; unparseable settings throw.
+- **Persisted scan state** — `UsageEvent`/`ScanState` Codable round-trip (including the `\u{1}` dedup keys and full-range `UInt64`); the versioned cache discards corrupt / wrong-version / stale / missing files and prunes cursors for vanished files; `UsageStore` seeds its first scan from the persisted state.
+- **Shrink / rotate** — a replaced file (new inode or birthtime, even with a reused inode) and a shrunk file both re-read from offset 0, while a plain append still resumes.
 
 Run: `swift test`. Keep green after every step.
 
