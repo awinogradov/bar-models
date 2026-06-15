@@ -53,7 +53,7 @@
                                      │ depends on
 ┌───────────────────────────────────▼──── UsageCore (pure Swift, tested) ──────┐
 │ Providers/   UsageProvider · ProviderRegistry · Claude/ClaudeProvider         │
-│ Scanning/    JSONLReader · UsageScanner · FileScanState                       │
+│ Scanning/    JSONLReader · UsageScanner · FileScanState · ScanStateStore      │
 │ Aggregation/ UsageStore · PeriodBucketer · Aggregator                         │
 │ Pricing/     PricingTable · CostCalculator                                    │
 │ Limits/      FiveHourWindower · LimitEstimator · PlanLimits · LimitSource     │
