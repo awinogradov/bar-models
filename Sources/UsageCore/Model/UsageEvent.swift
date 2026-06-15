@@ -27,7 +27,7 @@ public struct ProviderID: RawRepresentable, Hashable, Sendable, Codable {
 /// One normalized, deduplicated assistant turn — the common currency every
 /// provider parses into. The aggregation, pricing, limit, and rendering layers
 /// only ever see `UsageEvent`, never provider-specific shapes.
-public struct UsageEvent: Sendable, Identifiable, Equatable {
+public struct UsageEvent: Sendable, Identifiable, Equatable, Codable {
     /// The provider's message id — the dedup key. Streaming repeats the same id
     /// with identical token tuples, so last-wins dedup is correct.
     public let id: String
