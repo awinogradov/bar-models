@@ -26,18 +26,25 @@ public extension UsageScanner {
                 let attrs = try? fm.attributesOfItem(atPath: path)
                 let size = (attrs?[.size] as? NSNumber)?.uint64Value ?? 0
                 let mtime = (attrs?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+                let inode = (attrs?[.systemFileNumber] as? NSNumber)?.uint64Value
+                let createdAt = (attrs?[.creationDate] as? Date)?.timeIntervalSince1970
 
-                if let prior = files[path], prior.size == size, prior.modified == mtime {
+                let prior = files[path]
+                if let prior, prior.size == size, prior.modified == mtime,
+                   prior.inode == inode, prior.createdAt == createdAt {
                     continue // unchanged → skip
                 }
-                // Grew → resume from saved offset; new / shrank / rotated → re-read from 0.
-                let start: UInt64 = files[path].map { size >= $0.size ? $0.offset : 0 } ?? 0
+                // Same file that only grew → resume from the saved offset. A new,
+                // shrunk, or replaced file re-reads from 0 — including a rotation that
+                // reused the inode after a delete+create, which the birthtime catches.
+                let sameFile = prior.map { $0.inode == inode && $0.createdAt == createdAt } ?? false
+                let start: UInt64 = (sameFile && size >= (prior?.size ?? 0)) ? (prior?.offset ?? 0) : 0
                 let newOffset = (try? JSONLReader.readLines(from: url, startingAt: start) { line in
                     if let event = provider.parse(line: line) {
                         events["\(event.provider.rawValue)\u{1}\(event.id)"] = event
                     }
                 }) ?? start
-                files[path] = FileScanState(size: size, modified: mtime, offset: newOffset)
+                files[path] = FileScanState(size: size, modified: mtime, offset: newOffset, inode: inode, createdAt: createdAt)
             }
         }
         return ScanState(files: files, events: events)
