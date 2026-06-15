@@ -31,7 +31,7 @@ struct UsageStoreTests {
     @MainActor
     func freshOfficial() async throws {
         let source = try snapshotSource(fiveHour: 42, ageSeconds: 0, freshness: 15 * 60)
-        let store = UsageStore(scanner: emptyScanner(), limitSource: source)
+        let store = UsageStore(scanner: emptyScanner(), limitSource: source, scanStateStore: nil)
         await store.refresh()
         #expect(store.snapshot?.limit5h.isOfficial == true)
         #expect(abs((store.snapshot?.limit5h.percent ?? -1) - 0.42) < 1e-9)
@@ -41,8 +41,28 @@ struct UsageStoreTests {
     @MainActor
     func staleOfficial() async throws {
         let source = try snapshotSource(fiveHour: 42, ageSeconds: 10_000, freshness: 900)
-        let store = UsageStore(scanner: emptyScanner(), limitSource: source)
+        let store = UsageStore(scanner: emptyScanner(), limitSource: source, scanStateStore: nil)
         await store.refresh()
         #expect(store.snapshot?.limit5h.isOfficial == false)
+    }
+
+    @Test("a persisted scan state seeds the first scan (off-main load)")
+    @MainActor
+    func seedsFromPersistedState() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("store-persist-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let persistence = ScanStateStore(url: dir.appendingPathComponent("scan-state.json"))
+
+        // Pre-seed the cache; an empty registry means no real ~/.claude scan, so the
+        // published snapshot reflects exactly the persisted event — proving load seeded it.
+        persistence.save(ScanState(events: ["claude\u{1}seed": UsageEvent(
+            id: "seed", provider: .claude, timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            model: "claude-opus-4-8", tokens: TokenCounts(input: 1_000, output: 0))]), now: Date())
+
+        let store = UsageStore(scanner: emptyScanner(), scanStateStore: persistence)
+        await store.refresh()
+        #expect(store.snapshot?.eventCount == 1)
     }
 }

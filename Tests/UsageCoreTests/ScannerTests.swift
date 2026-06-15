@@ -65,4 +65,47 @@ struct ScannerTests {
         state = scanner.updateState(state, roots: [root], provider: ClaudeProvider())
         #expect(state.events.count == 2)
     }
+
+    @Test("a replaced file (new inode/birthtime) re-reads from offset 0")
+    func rotation() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "rot-\(UUID().uuidString)")
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let file = root.appending(path: "s.jsonl")
+        let scanner = UsageScanner()
+
+        try Data((line("m1", input: 1) + "\n").utf8).write(to: file)
+        var state = scanner.updateState(ScanState(), roots: [root], provider: ClaudeProvider())
+        #expect(state.events.count == 1)
+
+        // Replace atomically (temp + rename ⇒ new inode + new birthtime) with two
+        // records of the same line length. A stale-offset resume would seek past
+        // "mA" and miss it; correct rotation detection re-reads from 0 and sees both.
+        try (line("mA", input: 2) + "\n" + line("mB", input: 3) + "\n")
+            .write(to: file, atomically: true, encoding: .utf8)
+        state = scanner.updateState(state, roots: [root], provider: ClaudeProvider())
+        #expect(state.events["claude\u{1}mA"] != nil) // proves the read restarted at 0
+        #expect(state.events["claude\u{1}mB"] != nil)
+    }
+
+    @Test("a shrunk file re-reads from offset 0")
+    func shrink() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "shrink-\(UUID().uuidString)")
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let file = root.appending(path: "s.jsonl")
+        let scanner = UsageScanner()
+
+        try (line("m1", input: 1) + "\n" + line("m2", input: 2) + "\n")
+            .write(to: file, atomically: false, encoding: .utf8)
+        var state = scanner.updateState(ScanState(), roots: [root], provider: ClaudeProvider())
+        #expect(state.events.count == 2)
+
+        // Truncate in place (same inode) to a single, smaller, different record.
+        try (line("m3", input: 3) + "\n").write(to: file, atomically: false, encoding: .utf8)
+        state = scanner.updateState(state, roots: [root], provider: ClaudeProvider())
+        #expect(state.events["claude\u{1}m3"] != nil) // size < saved ⇒ re-read from 0 found it
+    }
 }
