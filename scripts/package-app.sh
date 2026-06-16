@@ -22,10 +22,10 @@ MIN_MACOS="14.0"
 #     always resolves to the newest Release's appcast.xml asset.
 #   • SU_PUBLIC_ED_KEY — the base64 EdDSA *public* key. The matching private key
 #     lives only in the keychain / the SPARKLE_EDDSA_PRIVATE_KEY CI secret and
-#     signs each appcast (see docs/09-distribution.md → "Auto-updates"). Replace
-#     the placeholder below with the key `generate_keys` prints (one-time setup).
+#     signs each appcast (see docs/09-distribution.md → "Auto-updates"). Generated
+#     once via `generate_keys`; safe to commit (only the private key is secret).
 SU_FEED_URL="https://github.com/awinogradov/bar-models/releases/latest/download/appcast.xml"
-SU_PUBLIC_ED_KEY="REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY"
+SU_PUBLIC_ED_KEY="nsulkGl/hQQuKjK63+W64yQGkBsgLuJ3Du1YQirVlPU="
 
 SIGN_IDENTITY="-" # ad-hoc by default
 while [ $# -gt 0 ]; do
