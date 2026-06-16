@@ -17,6 +17,16 @@ APP_NAME="bar-models"
 BUNDLE_ID="com.bar-models.app"
 MIN_MACOS="14.0"
 
+# Sparkle (in-app updates) configuration baked into Info.plist.
+#   • SU_FEED_URL — the `latest/download` redirect is stable across releases and
+#     always resolves to the newest Release's appcast.xml asset.
+#   • SU_PUBLIC_ED_KEY — the base64 EdDSA *public* key. The matching private key
+#     lives only in the keychain / the SPARKLE_EDDSA_PRIVATE_KEY CI secret and
+#     signs each appcast (see docs/09-distribution.md → "Auto-updates"). Replace
+#     the placeholder below with the key `generate_keys` prints (one-time setup).
+SU_FEED_URL="https://github.com/awinogradov/bar-models/releases/latest/download/appcast.xml"
+SU_PUBLIC_ED_KEY="REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY"
+
 SIGN_IDENTITY="-" # ad-hoc by default
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -39,12 +49,28 @@ BIN_PATH="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)"
 APP="build/${APP_NAME}.app"
 CONTENTS="$APP/Contents"
 rm -rf "$APP"
-mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
+mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$CONTENTS/Frameworks"
 cp "$BIN_PATH/$APP_NAME" "$CONTENTS/MacOS/$APP_NAME"
 
 # Bundle the status-line hook so the in-app "Enable live limits" opt-in can install it.
 cp "$ROOT/scripts/bar-models-statusline.sh" "$CONTENTS/Resources/bar-models-statusline.sh"
 chmod 0755 "$CONTENTS/Resources/bar-models-statusline.sh"
+
+# Embed Sparkle.framework. SwiftPM links it but does not assemble an .app, so we
+# copy the macOS slice out of the binary artifact's xcframework and add the loader
+# rpath the bundled executable needs (`swift build`'s rpath points into .build).
+SPARKLE_FW="$(find "$ROOT/.build/artifacts" -type d -path '*Sparkle.xcframework/macos-*/Sparkle.framework' -print -quit)"
+if [ -z "$SPARKLE_FW" ]; then
+    echo "Sparkle.framework not found under .build/artifacts — run 'swift package resolve' first" >&2
+    exit 1
+fi
+ditto "$SPARKLE_FW" "$CONTENTS/Frameworks/Sparkle.framework" # ditto preserves the framework's symlinks
+# Add the loader rpath unless `swift build` already emitted it (it usually does);
+# a duplicate LC_RPATH is harmless but avoidable, and the guard keeps us correct
+# if a future toolchain stops adding it.
+if ! otool -l "$CONTENTS/MacOS/$APP_NAME" | grep -q '@executable_path/../Frameworks'; then
+    install_name_tool -add_rpath "@executable_path/../Frameworks" "$CONTENTS/MacOS/$APP_NAME"
+fi
 
 cat > "$CONTENTS/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -77,16 +103,38 @@ cat > "$CONTENTS/Info.plist" <<EOF
     <string>NSApplication</string>
     <key>NSHumanReadableCopyright</key>
     <string>bar-models</string>
+    <key>SUFeedURL</key>
+    <string>${SU_FEED_URL}</string>
+    <key>SUPublicEDKey</key>
+    <string>${SU_PUBLIC_ED_KEY}</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
 </dict>
 </plist>
 EOF
 
 if [ "$SIGN_IDENTITY" = "-" ]; then
     echo "› ad-hoc signing (local use; not distributable)…"
-    codesign --force --sign - "$APP"
+    SIGN_ARGS=(--force --sign -)
 else
     echo "› signing with Developer ID (hardened runtime + timestamp)…"
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+    SIGN_ARGS=(--force --options runtime --timestamp --sign "$SIGN_IDENTITY")
 fi
+
+# Sign nested code inside-out: every helper inside Sparkle.framework first, then
+# the framework, then the outer app. `--deep` is intentionally avoided (it mis-signs
+# nested bundles and is deprecated); the framework + helpers ship with their own
+# signatures, so each must be re-signed with our identity for notarization to pass.
+FW="$CONTENTS/Frameworks/Sparkle.framework"
+FW_V="$FW/Versions/B"
+for nested in \
+    "$FW_V/XPCServices/Downloader.xpc" \
+    "$FW_V/XPCServices/Installer.xpc" \
+    "$FW_V/Updater.app" \
+    "$FW_V/Autoupdate"; do
+    [ -e "$nested" ] && codesign "${SIGN_ARGS[@]}" "$nested"
+done
+codesign "${SIGN_ARGS[@]}" "$FW"
+codesign "${SIGN_ARGS[@]}" "$APP"
 
 echo "✓ $APP"
