@@ -90,6 +90,7 @@ The runner version (`CFBundleShortVersionString`) still comes from the `VERSION`
 | `APPLE_ID` | Apple ID email used for notarization |
 | `APPLE_TEAM_ID` | Apple Developer Team ID |
 | `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID |
+| `SPARKLE_EDDSA_PRIVATE_KEY` | Sparkle EdDSA private key that signs the appcast (see [Auto-updates](#auto-updates-sparkle)) |
 
 ### How to obtain each secret
 
@@ -109,6 +110,8 @@ Do this once, on the Mac that already holds the working signing setup (see [Prer
 
 5. **`APPLE_APP_SPECIFIC_PASSWORD`** — generate at [account.apple.com](https://account.apple.com) → **Sign-In and Security** → **App-Specific Passwords** → **+** (label it e.g. `bar-models-notary`). This is the same credential used for `notarytool store-credentials` above; it works alongside 2FA and can be revoked independently.
 
+6. **`SPARKLE_EDDSA_PRIVATE_KEY`** — the Sparkle update-signing key. See [Auto-updates](#auto-updates-sparkle) for how to generate it; the secret value is the exported private-key file's contents.
+
 Add them under **Settings → Secrets and variables → Actions → New repository secret**, or via the `gh` CLI:
 
 ```sh
@@ -119,6 +122,58 @@ gh secret set APPLE_ID
 gh secret set APPLE_TEAM_ID
 gh secret set APPLE_APP_SPECIFIC_PASSWORD
 ```
+
+## Auto-updates (Sparkle)
+
+The app updates itself in place via [Sparkle](https://sparkle-project.org). An installed copy polls an **appcast** (an RSS feed of releases), and when a newer build is signed and published it downloads the DMG, verifies it, swaps the app, and relaunches — no manual re-download. Sparkle is a dependency of the SwiftUI app target only; `UsageCore` stays third-party-free.
+
+```
+RELEASE (git tag vX.Y.Z → CI)                 CLIENT (installed app, Sparkle)
+  build ─▶ embed+sign Sparkle.framework         launch / "Check for Updates…" / schedule
+  package .app ─▶ DMG ─▶ notarize ─▶ staple         │
+        │                                           ▼
+        ▼                                   GET …/releases/latest/download/appcast.xml
+  generate_appcast (EdDSA-sign DMG)                 │ newer build? verify EdDSA + notarization
+        │                                           ▼
+  upload to Release:  bar-models.dmg + appcast.xml  download DMG ─▶ swap app ─▶ relaunch
+```
+
+### Trust model
+
+- **EdDSA (ed25519):** Sparkle independently signs every update with a private key you generate once. The matching **public** key is baked into the app's `Info.plist` (`SUPublicEDKey`), so a client only installs a DMG whose appcast entry carries a valid signature. This is *in addition to* Developer ID + notarization.
+- **Feed URL:** `SUFeedURL` is `https://github.com/awinogradov/bar-models/releases/latest/download/appcast.xml` — GitHub's `latest/download` redirect always resolves to the newest Release's `appcast.xml` asset, so the feed URL never changes between releases. Served over HTTPS, as Sparkle requires.
+
+### One-time key setup
+
+The EdDSA keypair is generated once and reused for every release (like the Developer ID cert). **Losing the private key means clients can no longer be issued updates** — back it up.
+
+1. Generate the keypair (stores the private key in your login keychain, prints the public key):
+
+   ```sh
+   .build/artifacts/sparkle/Sparkle/bin/generate_keys
+   ```
+
+   Run `swift package resolve` first if `.build/artifacts` is absent.
+
+2. Copy the printed base64 **public** key into `scripts/package-app.sh` — replace the `SU_PUBLIC_ED_KEY="REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY"` placeholder. This is safe to commit.
+
+3. Export the **private** key for CI and store it as the `SPARKLE_EDDSA_PRIVATE_KEY` repository secret, then delete the local copy:
+
+   ```sh
+   .build/artifacts/sparkle/Sparkle/bin/generate_keys -x sparkle_private.key
+   gh secret set SPARKLE_EDDSA_PRIVATE_KEY < sparkle_private.key
+   rm sparkle_private.key
+   ```
+
+   Also keep a copy in a password manager. On the dev machine, local `scripts/release.sh` runs read the key straight from the keychain, so `--ed-key-file` is only needed in CI.
+
+### How a release produces the appcast
+
+`scripts/release.sh` runs `generate_appcast` after notarize + staple: it reads the version from inside the DMG, EdDSA-signs the enclosure, and writes `dist/appcast.xml` with the enclosure URL pointed at that tag's Release download dir (`--appcast-url-prefix`). The CI workflow attaches **both** `bar-models.dmg` and `appcast.xml` to the Release and fails if either is missing. Each release publishes a single-item appcast (just the latest build) — sufficient for "is there something newer" checks without retaining every historical archive.
+
+### First-release caveat
+
+The pre-Sparkle `0.1.0` build has no updater, so it cannot auto-update *to* the first Sparkle-enabled release — that one upgrade is a manual DMG install. Every release after it updates in place. Call this out in the release notes for the first Sparkle build.
 
 ## Notes
 
