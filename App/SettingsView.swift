@@ -6,6 +6,18 @@ import UsageCore
 /// arrives with M6.
 struct SettingsView: View {
     let model: AppModel
+    @ObservedObject var updater: UpdaterController
+
+    /// Mirrors Sparkle's `automaticallyChecksForUpdates` (NSUserDefaults-backed).
+    /// Seeded from the updater and written back only on user change, per Sparkle's
+    /// preferences-UI guidance.
+    @State private var autoCheck: Bool
+
+    init(model: AppModel, updater: UpdaterController) {
+        self.model = model
+        self.updater = updater
+        _autoCheck = State(initialValue: updater.updater.automaticallyChecksForUpdates)
+    }
 
     var body: some View {
         Form {
@@ -36,6 +48,12 @@ struct SettingsView: View {
                     }
                 }
                 .help("Real-time watches ~/.claude for changes; the intervals also refresh on a timer.")
+
+                Toggle("Automatically check for app updates", isOn: $autoCheck)
+                    .onChange(of: autoCheck) { _, newValue in
+                        updater.updater.automaticallyChecksForUpdates = newValue
+                    }
+                    .help("Let bar-models check for new releases in the background. You can always check manually from the menu bar.")
             }
 
             Section("Plan limits") {

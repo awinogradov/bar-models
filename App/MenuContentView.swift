@@ -5,6 +5,7 @@ import UsageCore
 /// quick-switch list (live values, checkmark on active), and Settings/Quit.
 struct MenuContentView: View {
     let model: AppModel
+    @ObservedObject var updater: UpdaterController
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -27,6 +28,9 @@ struct MenuContentView: View {
             }
 
             Divider()
+
+            Button("Check for Updates…") { updater.checkForUpdates() }
+                .disabled(!updater.canCheckForUpdates)
 
             HStack {
                 SettingsLink { Text("Settings…") }
