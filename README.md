@@ -1,5 +1,8 @@
 # Bar Models
 
+<img width="1774" height="887" alt="Generated image 7" src="https://github.com/user-attachments/assets/b7587f06-493c-49bb-83da-f94a28c7dcd2" />
+
+---
 A tiny native macOS **menu-bar app** that shows **one** glanceable AI-coding usage number — and lets you switch which one with a single tap, updating in real time.
 
 Inspired by [One Thing](https://sindresorhus.com/one-thing): show a single value, near-zero chrome. Where a full usage dashboard gives you charts, tables, and history, Bar Models gives you the one number you actually glance at — one configurable metric, always visible.
