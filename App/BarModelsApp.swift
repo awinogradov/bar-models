@@ -4,17 +4,18 @@ import SwiftUI
 /// in the menu bar with a small dropdown. Not `@main` — `Main` dispatches to it.
 struct BarModelsApp: App {
     @State private var model = AppModel()
+    @StateObject private var updater = UpdaterController()
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContentView(model: model)
+            MenuContentView(model: model, updater: updater)
         } label: {
             Text(model.title).foregroundStyle(model.titleLevel.tint)
         }
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView(model: model)
+            SettingsView(model: model, updater: updater)
         }
     }
 }
