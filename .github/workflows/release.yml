@@ -1,0 +1,153 @@
+name: Release
+
+# Reproduces scripts/release.sh end-to-end on a hosted macOS runner and publishes
+# the notarized DMG. See docs/09-distribution.md ("Releasing from CI") for the
+# required repository secrets and how to obtain them.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# action-gh-release needs write access to create/update the Release.
+permissions:
+  contents: write
+
+# Serialize releases for a ref; never cancel mid-notarization (that would orphan
+# the keychain and leave a half-submitted notary request).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 60 # caps a hung `notarytool submit --wait` (release.sh sets no notary timeout)
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Guard — tag matches VERSION
+        # On a tag push, the DMG version comes from the VERSION file (package-app.sh),
+        # not the tag. Fail fast if they disagree so we never ship a mislabeled Release.
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            ver="$(cat VERSION)"
+            if [ "$tag" != "$ver" ]; then
+              echo "tag v$tag != VERSION $ver" >&2
+              exit 1
+            fi
+            echo "tag v$tag matches VERSION $ver"
+          else
+            echo "not a tag push (${GITHUB_REF_TYPE:-unknown}); skipping VERSION guard"
+          fi
+
+      - name: Set up signing keychain
+        # release.sh runs `notarytool submit --keychain-profile … ` with NO --keychain,
+        # so the profile must resolve via the default/search-list keychain. Create an
+        # ephemeral keychain and make it unlocked + default + first in the search list.
+        env:
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/app-signing.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN" # no auto-lock mid-job
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # Prepend ours, keep existing entries. Unquoted substitution is intentional:
+          # each existing keychain must become a SEPARATE argument, not one blob.
+          # shellcheck disable=SC2046
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/"//g')
+          security default-keychain -s "$KEYCHAIN"
+
+      - name: Import Developer ID certificate
+        env:
+          DEVELOPER_ID_CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "$DEVELOPER_ID_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$DEVELOPER_ID_CERT_PASSWORD" \
+            -k "$KEYCHAIN" -T /usr/bin/codesign -T /usr/bin/security -f pkcs12
+          # Pre-authorize codesign so it never blocks on an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          n="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -c 'Developer ID Application')"
+          if [ "$n" -ne 1 ]; then
+            echo "expected exactly 1 Developer ID Application identity, found $n" >&2
+            exit 1
+          fi
+
+      - name: Store notarization profile
+        # Recreate the `bar-models-notary` profile release.sh expects, then prove it
+        # resolves the same way release.sh will (--keychain-profile only, no --keychain).
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool store-credentials bar-models-notary \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$KEYCHAIN"
+          # Authenticates against Apple, exactly as release.sh's submit will.
+          xcrun notarytool history --keychain-profile bar-models-notary
+
+      - name: Build, sign, notarize, staple
+        env:
+          BUILD_NUMBER: ${{ github.run_number }} # monotonic CFBundleVersion across CI builds
+        run: |
+          set -euo pipefail
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.*)".*/\1/')"
+          if [ -z "$IDENTITY" ]; then
+            echo "could not derive signing identity" >&2
+            exit 1
+          fi
+          scripts/release.sh --sign "$IDENTITY" --notary-profile bar-models-notary
+
+      - name: Upload DMG artifact
+        # always() so a partial DMG is captured for debugging; if-no-files-found:error
+        # still hard-fails the run when no DMG was produced at all.
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: bar-models-dmg
+          path: dist/bar-models.dmg
+          if-no-files-found: error
+
+      - name: Attach DMG to GitHub Release
+        # success() is explicit: a failed sign/notarize must not publish a Release.
+        # workflow_dispatch runs (no tag) skip this but still upload the artifact above.
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: dist/bar-models.dmg
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: xcrun notarytool history --keychain-profile bar-models-notary || true
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          security default-keychain -s login.keychain || true
