@@ -141,6 +141,7 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: dist/bar-models.dmg
+          fail_on_unmatched_files: true # never publish a Release without the DMG attached
 
       - name: Diagnostics on failure
         if: failure()
