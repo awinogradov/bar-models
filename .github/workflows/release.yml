@@ -111,9 +111,10 @@ jobs:
           # Authenticates against Apple, exactly as release.sh's submit will.
           xcrun notarytool history --keychain-profile bar-models-notary
 
-      - name: Build, sign, notarize, staple
+      - name: Build, sign, notarize, staple, appcast
         env:
           BUILD_NUMBER: ${{ github.run_number }} # monotonic CFBundleVersion across CI builds
+          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" \
@@ -122,26 +123,43 @@ jobs:
             echo "could not derive signing identity" >&2
             exit 1
           fi
-          scripts/release.sh --sign "$IDENTITY" --notary-profile bar-models-notary
+          # Materialize the Sparkle EdDSA private key for generate_appcast; the runner
+          # is single-use, but trap-remove it anyway so it never lingers in a log/cache.
+          ED_KEY_FILE="$RUNNER_TEMP/sparkle_ed_private.key"
+          trap 'rm -f "$ED_KEY_FILE"' EXIT
+          printf '%s' "$SPARKLE_EDDSA_PRIVATE_KEY" > "$ED_KEY_FILE"
+          APPCAST_ARGS=(--ed-key-file "$ED_KEY_FILE")
+          # Enclosure URLs point at this tag's Release assets. workflow_dispatch (no tag)
+          # builds a debug appcast with relative URLs and publishes no Release.
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            APPCAST_ARGS+=(--appcast-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/")
+          fi
+          scripts/release.sh --sign "$IDENTITY" --notary-profile bar-models-notary "${APPCAST_ARGS[@]}"
 
-      - name: Upload DMG artifact
+      - name: Upload DMG + appcast artifacts
         # always() so a partial DMG is captured for debugging; if-no-files-found:error
         # still hard-fails the run when no DMG was produced at all.
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bar-models-dmg
-          path: dist/bar-models.dmg
+          path: |
+            dist/bar-models.dmg
+            dist/appcast.xml
           if-no-files-found: error
 
-      - name: Attach DMG to GitHub Release
+      - name: Attach DMG + appcast to GitHub Release
         # success() is explicit: a failed sign/notarize must not publish a Release.
         # workflow_dispatch runs (no tag) skip this but still upload the artifact above.
+        # The appcast MUST ship with the DMG — SUFeedURL points at the latest Release's
+        # appcast.xml asset, so a Release without it would strand the updater.
         if: success() && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          files: dist/bar-models.dmg
-          fail_on_unmatched_files: true # never publish a Release without the DMG attached
+          files: |
+            dist/bar-models.dmg
+            dist/appcast.xml
+          fail_on_unmatched_files: true # never publish a Release without the DMG + appcast attached
 
       - name: Diagnostics on failure
         if: failure()
