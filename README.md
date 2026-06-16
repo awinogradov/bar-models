@@ -26,7 +26,7 @@ The design is written up as numbered chapters in [`docs/`](docs/):
 | [`06-plan-limits.md`](docs/06-plan-limits.md) | Official % via the status-line hook vs. the labeled estimate fallback, and the honesty rules. |
 | [`07-implementation.md`](docs/07-implementation.md) | Step-by-step build guide: per-milestone todos, deliverables, and the cross-cutting invariants. |
 | [`08-testing.md`](docs/08-testing.md) | Unit-test scope, the reference-dashboard cross-check, and manual/app verification. |
-| [`09-distribution.md`](docs/09-distribution.md) | Signing, Hardened Runtime, DMG, notarization, and stapling for a downloadable build. |
+| [`09-distribution.md`](docs/09-distribution.md) | Signing, Hardened Runtime, DMG, notarization, stapling, and Sparkle in-app auto-updates for a downloadable build. |
 
 ## Project structure
 
@@ -40,6 +40,7 @@ bar-models/
 │   ├── RefreshController.swift
 │   ├── LaunchAtLogin.swift
 │   ├── LiveLimits.swift       # opt-in install/restore of the status-line hook
+│   ├── Updater.swift          # Sparkle in-app auto-updates
 │   └── Main.swift
 ├── Sources/UsageCore/         # provider-neutral engine — SPM library, no UI
 │   ├── Model/                 # TokenCounts · UsageEvent · ProviderID

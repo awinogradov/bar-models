@@ -49,7 +49,9 @@ See `06-plan-limits.md`.
 
 ## Settings
 
-Small popover: which metric/period/definition, provider scope, plan + custom budget, updates interval, timezone (local/UTC) for period boundaries, include-Xcode-dir toggle, enable-live-limits, launch-at-login.
+Small popover: which metric/period/definition, provider scope, plan + custom budget, updates interval, timezone (local/UTC) for period boundaries, include-Xcode-dir toggle, enable-live-limits, launch-at-login, automatically-check-for-app-updates.
+
+The dropdown also carries a **Check for Updates…** action; the app ships with [Sparkle](https://sparkle-project.org) so a new release installs in place instead of requiring a re-download (see [`09-distribution.md`](09-distribution.md)).
 
 ## Provider scope (forward-looking)
 
